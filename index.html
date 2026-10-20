@@ -12,6 +12,8 @@
 
   <header>
     <h1>Workout Tracker</h1>
+    <!-- "Synced ✓", "2 waiting…", etc. (filled in by app.js) -->
+    <span id="sync-status" class="hint small"></span>
   </header>
 
   <!-- The four main sections. Each "tab" button shows one section. -->
@@ -236,7 +238,6 @@
     <!-- ============ HISTORY: list of past workouts ============ -->
     <section id="history" class="section">
       <h2>History</h2>
-      <p class="hint">Saved in this browser for now. Google Sheets comes in step 3.</p>
       <ul id="history-list"></ul>
     </section>
 
@@ -250,6 +251,23 @@
     <section id="profile" class="section">
       <h2>Profile</h2>
       <p class="hint">Your height, age and sex will go here.</p>
+
+      <!-- Where your data is saved. Filled in once per device. -->
+      <form id="form-connection" class="log-form">
+        <h2>Google Sheets</h2>
+        <p class="hint small">Paste the web app address from your Apps Script and your password (see SETUP.md).
+          Leave empty to keep everything on this device only.</p>
+
+        <label>Script address
+          <input name="url" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+        </label>
+
+        <label>Password
+          <input name="password" type="password" autocomplete="off">
+        </label>
+
+        <button type="submit" class="save">Save and sync</button>
+      </form>
     </section>
   </main>
 

@@ -40,7 +40,13 @@ Just for the user for now, but designed so others can use it later (every entry 
    User tested it 2026-10-20: all fine.
    Testing: no Node/Python on this PC; the preview pane blocks localStorage on file:// pages,
    so test via a throwaway PowerShell HttpListener server on localhost.
-3. ⬜ Connect Google Sheets (Apps Script the user pastes in the browser).
+3. ✅ Connect Google Sheets: `google-apps-script.gs` (one tab per type, readable columns,
+   password check, add/update/delete ops), setup steps in `SETUP.md`.
+   app.js keeps localStorage as the local copy + an outbox of changes; syncs on load, after
+   changes, when back online and when the app is reopened. Connection (URL + password) is set
+   in Profile and stored per device. Tested against a fake Sheets mock in the browser only.
+   User set up the real sheet + web app on 2026-10-20 ("Who has access: Anyone"); connected
+   from the computer and shows Synced ✓. Phone can't connect until the site is hosted (step 6).
 4. ⬜ History polish + body weight weekly average + chart (Chart.js from a CDN).
 5. ⬜ Profile + calorie estimates.
 6. ⬜ Publish on GitHub Pages; add to phone home screen.

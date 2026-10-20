@@ -1,11 +1,13 @@
 // =====================================================
 //  1. STORAGE
-//  For now everything is saved in this browser (localStorage).
-//  In step 3 we swap these few functions for Google Sheets,
-//  and the rest of the code stays the same.
+//  Every change is saved in this browser straight away (so the app
+//  works without internet), and also put in an "outbox". When there's
+//  a connection, the outbox is sent to the Google Sheet, and the sheet
+//  answers with the full, up-to-date list of entries.
 // =====================================================
 
 const STORAGE_KEY = "workout-entries";
+const OUTBOX_KEY = "workout-outbox";
 
 // Read all saved entries (an empty list if there are none yet)
 function loadEntries() {
@@ -20,28 +22,145 @@ function saveEntries(entries) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
+// The changes not yet sent to the sheet
+function loadOutbox() {
+  try {
+    return JSON.parse(localStorage.getItem(OUTBOX_KEY)) || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveOutbox(outbox) {
+  localStorage.setItem(OUTBOX_KEY, JSON.stringify(outbox));
+}
+
+// A unique id: the current time plus a few random letters, e.g. "1792473217680-k3f9"
+function newId() {
+  return Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+}
+
 // Add one new entry, with an id, an owner and the time it was created
 function addEntry(entry) {
-  entry.id = entry.id || Date.now().toString();   // keep an id we already chose
+  entry.id = entry.id || newId();          // keep an id we already chose
   entry.user = "me";                       // whose entry it is (for other users later)
   entry.createdAt = new Date().toISOString();
-  const entries = loadEntries();
-  entries.push(entry);
-  saveEntries(entries);
+  recordChange({ op: "add", entry: entry });
 }
 
 // Change some fields of one entry, e.g. updateEntry(id, { date: "2026-10-19" })
 function updateEntry(id, changes) {
-  const entries = loadEntries().map(function (e) {
-    return e.id === id ? Object.assign(e, changes) : e;
-  });
-  saveEntries(entries);
+  recordChange({ op: "update", id: id, changes: changes });
 }
 
 function deleteEntry(id) {
-  const remaining = loadEntries().filter(function (e) { return e.id !== id; });
-  saveEntries(remaining);
+  recordChange({ op: "delete", id: id });
 }
+
+// Apply one change to a list of entries and return the new list.
+// (The Apps Script does the same thing to the sheet.)
+function applyChange(entries, change) {
+  if (change.op === "add") {
+    return entries.filter(function (e) { return e.id !== change.entry.id; }).concat([change.entry]);
+  }
+  if (change.op === "update") {
+    return entries.map(function (e) {
+      return e.id === change.id ? Object.assign({}, e, change.changes) : e;
+    });
+  }
+  if (change.op === "delete") {
+    return entries.filter(function (e) { return e.id !== change.id; });
+  }
+  return entries;
+}
+
+// Save a change here, add it to the outbox, and send it soon
+// (no outbox until a sheet is connected; connecting uploads everything)
+function recordChange(change) {
+  saveEntries(applyChange(loadEntries(), change));
+  if (!getPref("sheetUrl", "")) return updateSyncStatus();
+  const outbox = loadOutbox();
+  outbox.push(change);
+  saveOutbox(outbox);
+  syncSoon();
+}
+
+
+// ---------- Syncing with the Google Sheet ----------
+
+let syncTimer;
+let syncing = false;
+let syncAgain = false;
+let syncError = "";
+
+// Wait a moment first, so several quick changes go in one trip
+function syncSoon() {
+  updateSyncStatus();
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(sync, 300);
+}
+
+async function sync() {
+  const url = getPref("sheetUrl", "");
+  const password = getPref("sheetPassword", "");
+  if (!url) return updateSyncStatus();          // not connected: this device only
+  if (syncing) { syncAgain = true; return; }    // already sending; go again afterwards
+
+  syncing = true;
+  updateSyncStatus();
+  const sent = loadOutbox();
+  try {
+    // Sent as plain text, which is the simplest way Google's scripts accept from a website
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ password: password, ops: sent })
+    });
+    const answer = await response.json();
+    if (!answer.ok) throw new Error(answer.error || "Something went wrong");
+
+    // Those changes arrived: take them out of the outbox. Then use the sheet's
+    // list, plus any changes you made while we were waiting for the answer.
+    const stillWaiting = loadOutbox().slice(sent.length);
+    saveOutbox(stillWaiting);
+    saveEntries(stillWaiting.reduce(applyChange, answer.entries));
+    setPref("lastSync", new Date().toISOString());
+    syncError = "";
+    refreshViews();
+  } catch (error) {
+    // No internet, or a problem: keep everything in the outbox and try later
+    if (!navigator.onLine) syncError = "Offline";
+    else if (error instanceof SyntaxError) syncError = "Check the script address";
+    else if (error instanceof TypeError) syncError = "Can't reach the sheet";
+    else syncError = error.message;
+  }
+  syncing = false;
+  updateSyncStatus();
+  if (syncAgain) { syncAgain = false; sync(); }
+}
+
+// The little status text in the header
+function updateSyncStatus() {
+  const status = document.getElementById("sync-status");
+  const waiting = loadOutbox().length;
+  if (!getPref("sheetUrl", "")) {
+    status.textContent = "This device only";
+  } else if (syncing) {
+    status.textContent = "Syncing…";
+  } else if (syncError) {
+    status.textContent = (syncError === "Offline" ? "Offline" : "⚠ " + syncError) +
+                         (waiting ? " · " + waiting + " waiting" : "");
+  } else if (waiting) {
+    status.textContent = waiting + " waiting…";
+  } else {
+    status.textContent = "Synced ✓";
+  }
+}
+
+// Try again when the internet comes back, or when you reopen the app
+window.addEventListener("online", sync);
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") sync();
+});
 
 // The workout you're in the middle of (only on this device), or null
 function getActiveWorkout() {
@@ -143,7 +262,7 @@ tabs.forEach(function (tab) {
 // =====================================================
 
 const picker = document.getElementById("type-picker");
-const forms = document.querySelectorAll("form.log-form");
+const forms = document.querySelectorAll("#log form.log-form");
 
 function openForm(formId) {
   picker.hidden = true;
@@ -207,7 +326,7 @@ function resetForm(form) {
 // =====================================================
 
 document.getElementById("start-workout").addEventListener("click", function () {
-  setActiveWorkout({ id: "w" + Date.now(), date: today(), startedAt: Date.now() });
+  setActiveWorkout({ id: "w" + newId(), date: today(), startedAt: Date.now() });
   renderCurrentWorkout();
 });
 
@@ -625,7 +744,40 @@ function renderHistory() {
 
 
 // =====================================================
-//  10. START-UP: show the running workout, if there is one
+//  10. PROFILE: connecting to Google Sheets
 // =====================================================
 
+const connectionForm = document.getElementById("form-connection");
+connectionForm.elements.url.value = getPref("sheetUrl", "");
+connectionForm.elements.password.value = getPref("sheetPassword", "");
+
+connectionForm.addEventListener("submit", function (event) {
+  event.preventDefault();
+  const f = connectionForm.elements;
+  const wasConnected = getPref("sheetUrl", "") !== "";
+  setPref("sheetUrl", f.url.value.trim());
+  setPref("sheetPassword", f.password.value);
+
+  // First time connecting: send everything already saved on this device
+  if (!wasConnected && f.url.value.trim()) {
+    const uploads = loadEntries().map(function (e) { return { op: "add", entry: e }; });
+    saveOutbox(uploads);
+  }
+  showToast("Saved ✓ Syncing…");
+  sync();
+});
+
+
+// =====================================================
+//  11. START-UP
+// =====================================================
+
+// Redraw what's on screen after new data arrives from the sheet
+function refreshViews() {
+  renderCurrentWorkout();
+  if (document.getElementById("history").classList.contains("active")) renderHistory();
+}
+
 renderCurrentWorkout();
+updateSyncStatus();
+sync();
