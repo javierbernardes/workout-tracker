@@ -125,12 +125,15 @@ Just for the user for now, but designed so others can use it later (every entry 
      the Claude API (separate pay-per-token account; key stored as a Supabase secret, never
      in the site). User was told: claude.ai subscription can't be used; Haiku 5.5 ≈ $0.0003,
      Sonnet 5.5 ≈ $0.006–0.015, Opus 5.5 ≈ $0.012–0.03 per request; user decides the model.
-   ⏳ WHOOP calibration: user has an OLD WHOOP history (no longer wears it). Export requested
-   2026-10-20 (up to 24 h). When the ZIP is in `whoop/` (git-ignored, with *.zip and *.csv):
-   compare WHOOP daily kcal with our formula for those days (ask the user's weight back then
-   and whether height changed) → personal resting-burn correction (and per-sport/gym METs if
-   enough sessions). Analyse locally only (health data, public repo); show results in plain
-   English before changing the app.
+   ✅ WHOOP calibration (2026-10-20): old WHOOP export (Feb 2025 – Mar 2026, 374 cycles,
+   187 workouts) in `whoop/` (git-ignored; analysed locally only, it's health data).
+   Rest days measured ≈1,948 kcal vs our formula ≈2,051 (at the 180 lb set in WHOOP; the
+   export has no profile weight). User chose a rest day of 2,000 kcal → everyday factor
+   0.992 (at current 174.3 lb, age 22). Per-sport METs from WHOOP gross kcal/min:
+   golf 2.7, padel 4.7, tennis 5.7, basketball 6.2 (≥9 sessions each); weightlifting kept
+   (HR undercounts lifting); others too few sessions. Stored in the synced profile entry as
+   `calibration: {everyday, sportMets, source}` (set via SQL); app applies it in
+   restingPerDay/sportKcal, keeps it when the profile form is saved, and shows a note in Profile.
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.

@@ -1870,7 +1870,10 @@ function restingPerDay(date) {
   const p = getProfile();
   const kg = weightKgOn(date);
   if (!p || !p.heightCm || !p.birthDate || !p.sex || !kg) return null;
-  return 10 * kg + 6.25 * p.heightCm - 5 * ageOn(p.birthDate, date) + (p.sex === "male" ? 5 : -161);
+  const formula = 10 * kg + 6.25 * p.heightCm - 5 * ageOn(p.birthDate, date) + (p.sex === "male" ? 5 : -161);
+  // Personal calibration (e.g. from WHOOP data) scales resting burn, and with it everyday movement
+  const factor = p.calibration && p.calibration.everyday ? p.calibration.everyday : 1;
+  return formula * factor;
 }
 
 // Extra calories for doing something at a given MET for some minutes
@@ -1914,6 +1917,11 @@ function cardioKcal(e, kg) {
 
 function sportKcal(e, kg) {
   const name = (e.sport || "").toLowerCase();
+  // Your own values (from a calibration) come first, then the standard table
+  const p = getProfile();
+  const own = p && p.calibration && p.calibration.sportMets ? p.calibration.sportMets : {};
+  const ownMatch = Object.keys(own).find(function (sport) { return name.includes(sport); });
+  if (ownMatch) return netKcal(own[ownMatch], e.minutes, kg);
   const match = SPORT_METS.find(function (s) { return name.includes(s[0]); });
   return netKcal(match ? match[1] : DEFAULT_MET, e.minutes, kg);
 }
@@ -2137,6 +2145,18 @@ function renderProfile() {
   document.getElementById("profile-rmr").textContent = resting
     ? "Your estimated resting burn: ≈ " + kcalText(resting) + " kcal per day."
     : p.heightCm ? "Log a weigh-in to see your resting burn." : "";
+
+  // Say so when the estimates are personally calibrated
+  const c = p.calibration;
+  const note = document.getElementById("profile-calibration");
+  note.hidden = !c;
+  if (c) {
+    const sports = Object.keys(c.sportMets || {}).map(function (s) {
+      return s.charAt(0).toUpperCase() + s.slice(1) + " " + c.sportMets[s];
+    }).join(", ");
+    note.textContent = "✓ Personally calibrated" + (c.source ? " with " + c.source : "") +
+      ": everyday burn × " + c.everyday + (sports ? "; your own intensity for " + sports : "") + ".";
+  }
 }
 
 profileForm.addEventListener("submit", function (event) {
@@ -2147,14 +2167,18 @@ profileForm.addEventListener("submit", function (event) {
     : Number(f.heightCm.value);
   if (!(heightCm >= 100 && heightCm <= 250)) { showToast("Check your height"); return; }
 
-  addEntry({
+  const profile = {
     id: "profile",
     type: "profile",
     date: today(),
     heightCm: Math.round(heightCm * 10) / 10,
     birthDate: f.birthDate.value,
     sex: f.sex.value
-  });
+  };
+  // Keep a personal calibration if there is one (it isn't part of this form)
+  const before = getProfile();
+  if (before && before.calibration) profile.calibration = before.calibration;
+  addEntry(profile);
   showToast("Profile saved ✓");
   renderProfile();
   renderToday();
