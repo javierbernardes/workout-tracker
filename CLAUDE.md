@@ -25,15 +25,24 @@ Just for the user for now, but designed so others can use it later (every entry 
 - **Calories:** conservative estimates for cardio and sports (MET-based), using weight + profile
   (height, age, sex).
 - Exercise input: predefined list + own entries for now. An AI "describe your workout" helper
-  is a possible later add-on (would run via the Google Apps Script, costs money per use).
+  is a possible later add-on (would need a small server function, e.g. a Supabase Edge
+  Function, and costs money per use).
 
 ### Tech decisions
 - Plain HTML/CSS/JS: `index.html`, `style.css`, `app.js`.
-- Data: Google Sheets via a Google Apps Script web app (user chose this, "option A").
-- Hosting: GitHub Pages (public repo, so no secrets in code; a simple password is typed once
-  per device and stored in the browser to stop strangers writing to the sheet).
-- Possible later move to Supabase if other users join.
-- Storage code is isolated in part 1 of `app.js` so it can be swapped from localStorage to Sheets.
+- Data: **Supabase** (switched from Google Sheets on 2026-10-20 because the user didn't want
+  to keep re-pasting/redeploying the Apps Script). Table `entries` (user_id, id, type, date,
+  data jsonb, updated_at), RLS so each user sees only their own rows (`supabase-setup.sql`).
+  The whole entry is stored in `data`, so new fields never need database changes. Avoid
+  anything that needs manual Supabase steps; if unavoidable, say so clearly.
+- App talks to Supabase with plain `fetch` (no supabase-js): `/auth/v1/token` for sign-in /
+  refresh, `/rest/v1/entries` for upsert/delete/select. Email + password sign-in; users are
+  created in the Supabase dashboard; public sign-ups turned off. Project URL + anon key are
+  constants at the top of `app.js` (public by design; never the service_role key).
+- Hosting: GitHub Pages (public repo, so no secrets in code). Goal: updates go live
+  automatically on push, with no manual steps for the user.
+- Storage code is part 1 of `app.js`: localStorage copy + outbox of changes; sync uploads the
+  entries the outbox touched, deletes the missing ones, then downloads everything (pages of 1000).
 
 ## Plan and progress
 1. ✅ Basic page: header, 4 tabs (Log, History, Weight, Profile), light/dark mode.
@@ -42,24 +51,28 @@ Just for the user for now, but designed so others can use it later (every entry 
    User tested it 2026-10-20: all fine.
    Testing: no Node/Python on this PC; the preview pane blocks localStorage on file:// pages,
    so test via a throwaway PowerShell HttpListener server on localhost.
-3. ✅ Connect Google Sheets: `google-apps-script.gs` (one tab per type, readable columns,
-   password check, add/update/delete ops), setup steps in `SETUP.md`.
-   app.js keeps localStorage as the local copy + an outbox of changes; syncs on load, after
-   changes, when back online and when the app is reopened. Connection (URL + password) is set
-   in Profile and stored per device. Tested against a fake Sheets mock in the browser only.
-   User set up the real sheet + web app on 2026-10-20 ("Who has access: Anyone"); connected
-   from the computer and shows Synced ✓. Phone can't connect until the site is hosted (step 6).
+3. ✅ Online storage. First Google Sheets (worked, now removed; its Sheet stays as the user's
+   backup), then replaced by Supabase: sign-in box in Profile, status in the header, setup steps
+   in `SETUP.md`. Tested against a fake Supabase in the browser (sign-in, wrong password,
+   upload, delete, offline, token refresh/refusal, other users' rows, >1000 rows, sign out).
+   Real project created 2026-10-20 (URL + publishable key in app.js; sign-ups off; anon
+   reads refused — checked). `supabase-views.sql` adds read-only views (workouts, weights,
+   cardio, sports, body_weight; security_invoker) so the Table Editor shows normal columns.
+   If new fields should appear there, update that file and the user re-runs it (optional;
+   the app never depends on the views). Views were applied and all 10 old logs deleted
+   (user confirmed) on 2026-10-20, so the table starts fresh.
+   Claude has the Supabase MCP connector (org "barnardes", project id ugzvmzkigbbnigdcqbfo):
+   run SQL / migrations directly instead of asking the user to paste SQL. Ask before deleting
+   data or big changes; run get_advisors after schema changes. Keep the .sql files in the repo
+   in sync with what was applied.
 4. ✅ History: day headings (Today / Yesterday / date) and filter buttons
    (All / Workouts / Sports / Weight; remembered per device). Weight tab done: this-week morning average + change vs last week, range buttons
    (1M/3M/1Y/All), a highlighted "Morning weight" chart (dots + weekly average line) and a
    muted "All weigh-ins" reference chart (Chart.js 4.4.1 from cdnjs), weekly table.
    Body weight form also asks "Before weighing, did you… Pee / Poop" (`peed`, `pooped`).
-   Apps Script now reads columns by title and auto-upgrades old tabs when columns change;
-   user must deploy a new version of the script whenever its columns change.
-   User deployed the updated script and tested everything on 2026-10-20: works.
    Every entry has a `time` ("HH:MM"): editable Time box next to Date (defaults to now; a
    workout's defaults to its start); weights/cardio get the time they were added. Old entries
-   fall back to `createdAt`. Sheet has a Time column after Date (script needs redeploy).
+   fall back to `createdAt`.
    Not chosen for History (maybe later): editing entries, workout totals (sets, volume).
 5. ⬜ Profile + calorie estimates.
 6. ⬜ Publish on GitHub Pages; add to phone home screen.

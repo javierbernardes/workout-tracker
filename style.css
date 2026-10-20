@@ -48,7 +48,8 @@ header h1 {
   margin: 24px 0 16px;
 }
 
-#form-connection { margin-top: 24px; }
+.account { margin-top: 24px; }
+.account p { margin: 0; }
 
 /* ---------- Tabs ---------- */
 nav {

@@ -1,52 +1,47 @@
-# Connecting the tracker to Google Sheets
+# Setting up Supabase (where your logs are saved)
 
-You only do this once. It takes about 5 minutes.
+You only do this once. It takes about 10 minutes.
 
-## 1. Make the sheet
-1. Go to <https://sheets.new> (makes a new, empty Google Sheet).
-2. Click the title "Untitled spreadsheet" and name it **Workout Tracker**.
+## 1. Create the project
+1. Go to <https://supabase.com> and click **Start your project**.
+   Sign up. "Continue with GitHub" is easiest, since you already have GitHub.
+2. Click **New project** and fill in:
+   - **Name:** `workout-tracker`
+   - **Database password:** click **Generate a password** and save it somewhere safe.
+     (The tracker doesn't use it, but you may need it someday.)
+   - **Region:** the one closest to you.
+3. Click **Create new project** and wait a minute or two while it gets ready.
 
-## 2. Add the script
-1. In the sheet's menu: **Extensions → Apps Script**. A code editor opens in a new tab.
-2. Delete the little bit of code that's already there.
-3. Open `google-apps-script.gs` from this project, copy **all** of it, and paste it in.
-4. Near the top, change `"CHANGE-ME"` to a password of your own, e.g. `"blue-kettle-42"`.
-   - Use a new password, **not** your Google password.
-   - Change it only here in Google's editor, never in the project file (that one will be public).
-5. Click the 💾 **Save** icon.
+## 2. Create the table
+1. In the left menu, open **SQL Editor**, then click **New query** (or the **+**).
+2. Open `supabase-setup.sql` from this project, copy **all** of it, and paste it in.
+3. Click **Run**. It should say "Success. No rows returned".
 
-## 3. Publish it as a web app
-1. Click the blue **Deploy** button → **New deployment**.
-2. Next to "Select type", click the ⚙️ gear → **Web app**.
-3. Fill in:
-   - Description: `v1`
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-     (anyone with the address can *reach* the script, but it does nothing without your password)
-4. Click **Deploy**.
-5. Google asks for permission:
-   - Click **Authorize access** and pick your Google account.
-   - You'll see "Google hasn't verified this app". That's normal for a script you wrote yourself:
-     click **Advanced** → **Go to Workout Tracker (unsafe)** → **Allow**.
-6. Copy the **Web app URL** (it ends in `/exec`).
+## 3. Create your login
+1. Left menu: **Authentication** → **Users** → **Add user** → **Create new user**.
+2. Type your email and a password for the tracker, tick **Auto Confirm User**, then **Create user**.
+3. So strangers can't make accounts on your project: go to **Authentication** → **Sign In / Providers**
+   and turn **off** "Allow new users to sign up". Click **Save**.
 
-**Check it works:** paste that URL into a new browser tab. You should see
-`"Workout tracker script is running."`
+## 4. Copy the two connection values
+Click the **Connect** button at the top (or **Project Settings → API Keys / Data API**) and copy:
+- the **Project URL**, like `https://abcdefgh.supabase.co`
+- the **anon public** key (a long text starting with `eyJ…`) or the **publishable** key (`sb_publishable_…`)
 
-## 4. Connect the website
-1. Open the tracker, go to **Profile**.
-2. Paste the URL into **Script address**, type your password, tap **Save and sync**.
-3. The top-right corner should say **Synced ✓**, and new tabs (Workouts, Weights, …) appear in your sheet.
+These two are made to be public, so they can go in the code. **Never** copy the
+`service_role` or `secret` key; that one must stay private.
 
-Do step 4 once on every device (phone, computer).
-
-## If you change the script later
-Use **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**.
-This keeps the same URL, so you don't need to reconnect your devices.
+## 5. Sign in on each device
+Open the tracker → **Profile** → type your email and password → **Sign in**.
+The top-right corner should say **Synced ✓**. Do this once per device (phone, computer).
 
 ## What the status in the top-right means
-- **Synced ✓**: everything is in the sheet.
+- **Synced ✓**: everything is saved online.
 - **2 waiting…**: saved on this device, about to be sent.
-- **Offline · 2 waiting**: no internet; it sends them automatically when you're back online.
-- **⚠ Wrong password** / **⚠ Check the script address**: fix it in Profile.
-- **This device only**: not connected to a sheet yet.
+- **Offline · 2 waiting**: no internet; sent automatically when you're back online.
+- **⚠ …**: something went wrong, for example you need to sign in again in Profile.
+- **Not signed in**: logs stay on this device only until you sign in.
+
+## If the project gets paused
+Free Supabase projects pause after about a week without use. If the tracker shows an error,
+open <https://supabase.com/dashboard>, pick the project and click **Restore**.

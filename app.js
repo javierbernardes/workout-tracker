@@ -1,10 +1,16 @@
 // =====================================================
 //  1. STORAGE
 //  Every change is saved in this browser straight away (so the app
-//  works without internet), and also put in an "outbox". When there's
-//  a connection, the outbox is sent to the Google Sheet, and the sheet
-//  answers with the full, up-to-date list of entries.
+//  works without internet), and also put in an "outbox". When you're
+//  signed in and online, the outbox is sent to Supabase (the online
+//  database), and we download the full, up-to-date list of entries.
 // =====================================================
+
+// Your Supabase project. These two values are meant to be public: the
+// database's own rules (see supabase-setup.sql) protect your data.
+// NEVER put the "service_role" / "secret" key here.
+const SUPABASE_URL = "https://ugzvmzkigbbnigdcqbfo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Dk-xgU9NWZ2SNcD-4M0I9w_W8iA522l";   // the public "publishable" key
 
 const STORAGE_KEY = "workout-entries";
 const OUTBOX_KEY = "workout-outbox";
@@ -22,7 +28,7 @@ function saveEntries(entries) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-// The changes not yet sent to the sheet
+// The changes not yet sent online
 function loadOutbox() {
   try {
     return JSON.parse(localStorage.getItem(OUTBOX_KEY)) || [];
@@ -57,8 +63,7 @@ function deleteEntry(id) {
   recordChange({ op: "delete", id: id });
 }
 
-// Apply one change to a list of entries and return the new list.
-// (The Apps Script does the same thing to the sheet.)
+// Apply one change to a list of entries and return the new list
 function applyChange(entries, change) {
   if (change.op === "add") {
     return entries.filter(function (e) { return e.id !== change.entry.id; }).concat([change.entry]);
@@ -75,10 +80,8 @@ function applyChange(entries, change) {
 }
 
 // Save a change here, add it to the outbox, and send it soon
-// (no outbox until a sheet is connected; connecting uploads everything)
 function recordChange(change) {
   saveEntries(applyChange(loadEntries(), change));
-  if (!getPref("sheetUrl", "")) return updateSyncStatus();
   const outbox = loadOutbox();
   outbox.push(change);
   saveOutbox(outbox);
@@ -86,7 +89,100 @@ function recordChange(change) {
 }
 
 
-// ---------- Syncing with the Google Sheet ----------
+// ---------- Signing in ----------
+// When you sign in, Supabase gives us a "session": a pass that proves who you
+// are. It's kept in this browser and lasts an hour; after that we swap it for
+// a fresh one automatically, so you stay signed in.
+
+function getSession() {
+  try {
+    return JSON.parse(localStorage.getItem("supabase-session"));
+  } catch (error) {
+    return null;
+  }
+}
+
+function setSession(session) {
+  if (session) localStorage.setItem("supabase-session", JSON.stringify(session));
+  else localStorage.removeItem("supabase-session");
+}
+
+// Ask Supabase's sign-in service for a session (with a password, or by renewing one)
+async function requestSession(grantType, body) {
+  const response = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=" + grantType, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const answer = await response.json();
+  if (!response.ok) {
+    throw new Error(answer.error_description || answer.msg || answer.message || "Sign-in failed");
+  }
+  setSession({
+    accessToken: answer.access_token,
+    refreshToken: answer.refresh_token,
+    expiresAt: Date.now() + answer.expires_in * 1000,
+    userId: answer.user.id,
+    email: answer.user.email
+  });
+}
+
+async function signIn(email, password) {
+  await requestSession("password", { email: email, password: password });
+  // Upload everything already saved on this device (also logs from before signing in)
+  const uploads = loadEntries().map(function (e) { return { op: "add", entry: e }; });
+  saveOutbox(loadOutbox().concat(uploads));
+  sync();
+}
+
+// Signing out removes your logs from this device (they stay safe online)
+function signOut() {
+  setSession(null);
+  saveEntries([]);
+  saveOutbox([]);
+  setActiveWorkout(null);
+  syncError = "";
+  updateSyncStatus();
+  refreshViews();
+}
+
+// A session that's still valid, renewed first if it's about to run out
+async function validSession() {
+  const session = getSession();
+  if (Date.now() < session.expiresAt - 60000) return session;
+  try {
+    await requestSession("refresh_token", { refresh_token: session.refreshToken });
+  } catch (error) {
+    if (error instanceof TypeError) throw error;   // no internet: just try again later
+    setSession(null);                              // the pass was refused
+    throw new Error("Please sign in again in Profile");
+  }
+  return getSession();
+}
+
+// Send a request to your database table, as you (the signed-in user)
+async function database(path, options) {
+  const session = await validSession();
+  const response = await fetch(SUPABASE_URL + "/rest/v1/" + path, {
+    method: options.method || "GET",
+    headers: Object.assign({
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + session.accessToken,
+      "Content-Type": "application/json"
+    }, options.headers),
+    body: options.body
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = "Supabase error " + response.status;
+    try { message = JSON.parse(text).message || message; } catch (error) { /* keep the number */ }
+    throw new Error(message);
+  }
+  return text ? JSON.parse(text) : null;
+}
+
+
+// ---------- Syncing with Supabase ----------
 
 let syncTimer;
 let syncing = false;
@@ -101,40 +197,65 @@ function syncSoon() {
 }
 
 async function sync() {
-  const url = getPref("sheetUrl", "");
-  const password = getPref("sheetPassword", "");
-  if (!url) return updateSyncStatus();          // not connected: this device only
+  if (!SUPABASE_URL || !getSession()) return updateSyncStatus();   // not signed in: this device only
   if (syncing) { syncAgain = true; return; }    // already sending; go again afterwards
 
   syncing = true;
   updateSyncStatus();
   const sent = loadOutbox();
   try {
-    // Sent as plain text, which is the simplest way Google's scripts accept from a website
-    const response = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify({ password: password, ops: sent })
+    // Which logs did the outbox touch? Those still here get saved online;
+    // those no longer here were deleted, so delete them online too.
+    const entries = loadEntries();
+    const ids = Array.from(new Set(sent.map(function (c) {
+      return c.op === "add" ? c.entry.id : c.id;
+    })));
+    const toSave = entries.filter(function (e) { return ids.includes(e.id); });
+    const toDelete = ids.filter(function (id) {
+      return !entries.some(function (e) { return e.id === id; });
     });
-    const answer = await response.json();
-    if (!answer.ok) throw new Error(answer.error || "Something went wrong");
 
-    // Those changes arrived: take them out of the outbox. Then use the sheet's
-    // list, plus any changes you made while we were waiting for the answer.
+    if (toSave.length) {
+      const userId = getSession().userId;
+      await database("entries?on_conflict=user_id,id", {
+        method: "POST",
+        // "merge-duplicates" = if it's already there, replace it instead of failing
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(toSave.map(function (e) {
+          return { user_id: userId, id: e.id, type: e.type, date: e.date, data: e,
+                   updated_at: new Date().toISOString() };
+        }))
+      });
+    }
+    if (toDelete.length) {
+      const list = toDelete.map(function (id) { return '"' + id + '"'; }).join(",");
+      await database("entries?id=in.(" + encodeURIComponent(list) + ")", { method: "DELETE" });
+    }
+
+    // Download everything, 1000 at a time (the most Supabase sends at once)
+    let online = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await database("entries?select=data&order=id&limit=1000&offset=" + offset, {});
+      online = online.concat(page.map(function (row) { return row.data; }));
+      if (page.length < 1000) break;
+    }
+
+    // Those changes arrived: take them out of the outbox. Then use the online
+    // list, plus any changes you made while we were waiting.
     const stillWaiting = loadOutbox().slice(sent.length);
     saveOutbox(stillWaiting);
-    saveEntries(stillWaiting.reduce(applyChange, answer.entries));
-    setPref("lastSync", new Date().toISOString());
+    saveEntries(stillWaiting.reduce(applyChange, online));
     syncError = "";
     refreshViews();
   } catch (error) {
     // No internet, or a problem: keep everything in the outbox and try later
     if (!navigator.onLine) syncError = "Offline";
-    else if (error instanceof SyntaxError) syncError = "Check the script address";
-    else if (error instanceof TypeError) syncError = "Can't reach the sheet";
+    else if (error instanceof TypeError) syncError = "Can't reach Supabase";
     else syncError = error.message;
   }
   syncing = false;
   updateSyncStatus();
+  renderAccount();   // in case you were signed out because the pass was refused
   if (syncAgain) { syncAgain = false; sync(); }
 }
 
@@ -142,8 +263,8 @@ async function sync() {
 function updateSyncStatus() {
   const status = document.getElementById("sync-status");
   const waiting = loadOutbox().length;
-  if (!getPref("sheetUrl", "")) {
-    status.textContent = "This device only";
+  if (!SUPABASE_URL || !getSession()) {
+    status.textContent = syncError ? "⚠ " + syncError : "Not signed in";
   } else if (syncing) {
     status.textContent = "Syncing…";
   } else if (syncError) {
@@ -1073,41 +1194,65 @@ function chartOptions(colors, unit) {
 
 
 // =====================================================
-//  10. PROFILE: connecting to Google Sheets
+//  10. PROFILE: your account
 // =====================================================
 
-const connectionForm = document.getElementById("form-connection");
-connectionForm.elements.url.value = getPref("sheetUrl", "");
-connectionForm.elements.password.value = getPref("sheetPassword", "");
+const signInForm = document.getElementById("form-signin");
 
-connectionForm.addEventListener("submit", function (event) {
+// Show the sign-in form, or "Signed in as …"
+function renderAccount() {
+  const session = getSession();
+  signInForm.hidden = !!session;
+  document.getElementById("signed-in").hidden = !session;
+  if (session) document.getElementById("signed-in-email").textContent = session.email;
+}
+
+signInForm.addEventListener("submit", async function (event) {
   event.preventDefault();
-  const f = connectionForm.elements;
-  const wasConnected = getPref("sheetUrl", "") !== "";
-  setPref("sheetUrl", f.url.value.trim());
-  setPref("sheetPassword", f.password.value);
-
-  // First time connecting: send everything already saved on this device
-  if (!wasConnected && f.url.value.trim()) {
-    const uploads = loadEntries().map(function (e) { return { op: "add", entry: e }; });
-    saveOutbox(uploads);
+  const f = signInForm.elements;
+  if (!SUPABASE_URL) {
+    showToast("Supabase isn't set up yet");
+    return;
   }
-  showToast("Saved ✓ Syncing…");
-  sync();
+  try {
+    await signIn(f.email.value.trim(), f.password.value);
+    signInForm.reset();
+    renderAccount();
+    showToast("Signed in ✓");
+  } catch (error) {
+    showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
+  }
 });
+
+document.getElementById("sign-out").addEventListener("click", function () {
+  const waiting = loadOutbox().length;
+  const question = waiting
+    ? waiting + " change(s) haven't been sent yet and will be lost. Sign out anyway?"
+    : "Sign out? Your logs stay saved online.";
+  if (!confirm(question)) return;
+  signOut();
+  renderAccount();
+});
+
+// Settings from the Google Sheets version, no longer used
+localStorage.removeItem("pref-sheetUrl");
+localStorage.removeItem("pref-sheetPassword");
+localStorage.removeItem("pref-lastSync");
 
 
 // =====================================================
 //  11. START-UP
 // =====================================================
 
-// Redraw what's on screen after new data arrives from the sheet
+// Redraw what's on screen after new data arrives
 function refreshViews() {
   renderCurrentWorkout();
+  renderAccount();
   if (document.getElementById("history").classList.contains("active")) renderHistory();
   if (document.getElementById("weight").classList.contains("active")) renderWeight();
 }
 
 renderCurrentWorkout();
+renderAccount();
 updateSyncStatus();
 sync();

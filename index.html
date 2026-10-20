@@ -335,21 +335,28 @@
       <p class="hint">Your height, age and sex will go here.</p>
 
       <!-- Where your data is saved. Filled in once per device. -->
-      <form id="form-connection" class="log-form">
-        <h2>Google Sheets</h2>
-        <p class="hint small">Paste the web app address from your Apps Script and your password (see SETUP.md).
-          Leave empty to keep everything on this device only.</p>
+      <!-- Account: the sign-in form, or who you're signed in as (app.js shows one) -->
+      <form id="form-signin" class="log-form account">
+        <h2>Account</h2>
+        <p class="hint small">Sign in to save your logs online and see them on all your devices.
+          Until then, they're kept on this device only.</p>
 
-        <label>Script address
-          <input name="url" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+        <label>Email
+          <input name="email" type="email" autocomplete="username" required>
         </label>
 
         <label>Password
-          <input name="password" type="password" autocomplete="off">
+          <input name="password" type="password" autocomplete="current-password" required>
         </label>
 
-        <button type="submit" class="save">Save and sync</button>
+        <button type="submit" class="save">Sign in</button>
       </form>
+
+      <div id="signed-in" class="log-form account" hidden>
+        <h2>Account</h2>
+        <p>Signed in as <strong id="signed-in-email"></strong></p>
+        <button type="button" id="sign-out" class="secondary">Sign out</button>
+      </div>
     </section>
   </main>
 
