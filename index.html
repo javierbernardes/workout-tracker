@@ -231,6 +231,15 @@
           <input type="checkbox" name="notMorning"> Not a morning weigh-in
         </label>
 
+        <!-- Going to the toilet first changes the number a little -->
+        <p class="hint small">Before weighing, did you…</p>
+        <label class="check">
+          <input type="checkbox" name="peed"> Pee
+        </label>
+        <label class="check">
+          <input type="checkbox" name="pooped"> Poop
+        </label>
+
         <button type="submit" class="save">Save weight</button>
       </form>
     </section>
@@ -244,7 +253,53 @@
     <!-- ============ WEIGHT: weekly average and chart ============ -->
     <section id="weight" class="section">
       <h2>Body weight</h2>
-      <p class="hint">Your weekly average and chart will appear here.</p>
+      <p id="weight-empty" class="hint" hidden>No weigh-ins yet. Log one from the Log tab.</p>
+
+      <div id="weight-content">
+        <!-- The numbers that matter most, at a glance -->
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat-label">This week's average</div>
+            <div class="stat-value" id="stat-week">–</div>
+            <div class="stat-note" id="stat-week-note"></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">vs last week</div>
+            <div class="stat-value" id="stat-change">–</div>
+            <div class="stat-note" id="stat-change-note"></div>
+          </div>
+        </div>
+
+        <!-- How far back the charts and table go (data-days="" means all) -->
+        <div class="range-buttons">
+          <button type="button" data-days="30">1 month</button>
+          <button type="button" data-days="91">3 months</button>
+          <button type="button" data-days="365">1 year</button>
+          <button type="button" data-days="">All</button>
+        </div>
+
+        <!-- The important chart -->
+        <div class="chart-card main">
+          <div class="chart-title">☀️ Morning weight <span class="badge">The one to watch</span></div>
+          <p class="hint small">Dots are morning weigh-ins; the line is the weekly average.
+            Morning weigh-ins are the most comparable from day to day.</p>
+          <div class="chart-box"><canvas id="chart-morning"></canvas></div>
+        </div>
+
+        <!-- The "just for reference" chart -->
+        <div class="chart-card secondary">
+          <div class="chart-title">All weigh-ins <span class="hint small">just for reference</span></div>
+          <div class="chart-box short"><canvas id="chart-all"></canvas></div>
+        </div>
+
+        <p id="chart-offline" class="hint small" hidden>Charts need an internet connection to load.</p>
+
+        <h3>Weekly averages (morning)</h3>
+        <table id="weekly-table">
+          <thead><tr><th>Week of</th><th>Average</th><th>Weigh-ins</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- ============ PROFILE: height, age, sex (for calorie estimates) ============ -->
@@ -273,6 +328,9 @@
 
   <!-- Small "Saved ✓" message that pops up at the bottom -->
   <div id="toast" hidden></div>
+
+  <!-- Chart.js: a free charting library, loaded from a public CDN (no install needed) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
   <!-- Load the behavior (what happens when you click) from app.js -->
   <script src="app.js"></script>

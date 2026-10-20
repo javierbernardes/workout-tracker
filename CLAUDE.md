@@ -47,7 +47,14 @@ Just for the user for now, but designed so others can use it later (every entry 
    in Profile and stored per device. Tested against a fake Sheets mock in the browser only.
    User set up the real sheet + web app on 2026-10-20 ("Who has access: Anyone"); connected
    from the computer and shows Synced ✓. Phone can't connect until the site is hosted (step 6).
-4. ⬜ History polish + body weight weekly average + chart (Chart.js from a CDN).
+4. 🟡 Weight tab done: this-week morning average + change vs last week, range buttons
+   (1M/3M/1Y/All), a highlighted "Morning weight" chart (dots + weekly average line) and a
+   muted "All weigh-ins" reference chart (Chart.js 4.4.1 from cdnjs), weekly table.
+   Body weight form also asks "Before weighing, did you… Pee / Poop" (`peed`, `pooped`).
+   Apps Script now reads columns by title and auto-upgrades old tabs when columns change;
+   user must deploy a new version of the script whenever its columns change.
+   User deployed the updated script and tested everything on 2026-10-20: works.
+   History polish not done yet.
 5. ⬜ Profile + calorie estimates.
 6. ⬜ Publish on GitHub Pages; add to phone home screen.
 7. ⬜ Later: extras, design polish, other users, optional AI helper.

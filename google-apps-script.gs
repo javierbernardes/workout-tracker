@@ -36,7 +36,8 @@ const TABS = {
     ["notes", "Notes"]
   ]},
   bodyweight: { name: "Body weight", columns: [
-    ["date", "Date"], ["weight", "Weight"], ["unit", "Unit"], ["morning", "Morning weigh-in"]
+    ["date", "Date"], ["weight", "Weight"], ["unit", "Unit"], ["morning", "Morning weigh-in"],
+    ["peed", "Peed before"], ["pooped", "Pooped before"]
   ]}
 };
 
@@ -48,6 +49,9 @@ const EXTRA_COLUMNS = [
 // Fields that hold numbers (everything else is text)
 const NUMBER_FIELDS = ["minutes", "speed", "incline", "level", "floors",
                        "temperature", "score", "weight"];
+
+// Fields that are yes/no
+const YES_NO_FIELDS = ["morning", "peed", "pooped"];
 
 
 // -----------------------------------------------------
@@ -122,18 +126,46 @@ function columnsOf(type) {
   return TABS[type].columns.concat(EXTRA_COLUMNS);
 }
 
-// Get a tab, creating it (with bold column titles) the first time
+function titlesOf(type) {
+  return columnsOf(type).map(function (c) { return c[1]; });
+}
+
+// Get a tab, creating it (with bold column titles) the first time.
+// If its columns are from an older version of this script, update it.
 function getTab(type) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const name = TABS[type].name;
-  let sheet = spreadsheet.getSheetByName(name);
+  let sheet = spreadsheet.getSheetByName(TABS[type].name);
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(name);
-    const titles = columnsOf(type).map(function (c) { return c[1]; });
-    sheet.getRange(1, 1, 1, titles.length).setValues([titles]).setFontWeight("bold");
-    sheet.setFrozenRows(1);
+    sheet = spreadsheet.insertSheet(TABS[type].name);
+    writeTitles(sheet, type);
+  } else {
+    const current = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+    if (current.join("|") !== titlesOf(type).join("|")) upgradeTab(sheet, type, current);
   }
   return sheet;
+}
+
+function writeTitles(sheet, type) {
+  const titles = titlesOf(type);
+  sheet.getRange(1, 1, 1, titles.length).setValues([titles]).setFontWeight("bold");
+  sheet.setFrozenRows(1);
+}
+
+// Re-write a tab with the new columns, reading the old rows by their column titles
+function upgradeTab(sheet, type, oldTitles) {
+  const rows = sheet.getLastRow() < 2 ? [] :
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, oldTitles.length).getValues();
+  const entries = rows.map(function (row) {
+    const entry = { type: type };
+    columnsOf(type).forEach(function (c) {
+      const i = oldTitles.indexOf(c[1]);
+      if (i !== -1 && row[i] !== "") entry[c[0]] = fromCell(c[0], row[i]);
+    });
+    return entry;
+  });
+  sheet.clear();
+  writeTitles(sheet, type);
+  entries.forEach(function (entry, i) { writeRow(sheet, i + 2, entry); });
 }
 
 // Write one entry into a row. Text columns are marked as plain text first,
@@ -155,7 +187,7 @@ function toCell(field, value) {
   if (field === "sets") {
     return value.map(function (s) { return s.reps + " × " + s.weight; }).join(", ");
   }
-  if (field === "morning") return value ? "yes" : "no";
+  if (YES_NO_FIELDS.includes(field)) return value ? "yes" : "no";
   return value;
 }
 
@@ -170,7 +202,7 @@ function fromCell(field, value) {
       return { reps: Number(numbers[0]), weight: Number(numbers[1]) };
     });
   }
-  if (field === "morning") return value === "yes";
+  if (YES_NO_FIELDS.includes(field)) return value === "yes";
   if (NUMBER_FIELDS.includes(field)) return Number(value);
   return String(value);
 }
@@ -187,8 +219,8 @@ function rowToEntry(type, row) {
 function readAll() {
   const entries = [];
   Object.keys(TABS).forEach(function (type) {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS[type].name);
-    if (!sheet || sheet.getLastRow() < 2) return;
+    const sheet = getTab(type);
+    if (sheet.getLastRow() < 2) return;
     const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, columnsOf(type).length).getValues();
     rows.forEach(function (row) {
       const entry = rowToEntry(type, row);
@@ -203,8 +235,8 @@ function findRow(id) {
   const types = Object.keys(TABS);
   for (let t = 0; t < types.length; t++) {
     const type = types[t];
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS[type].name);
-    if (!sheet || sheet.getLastRow() < 2) continue;
+    const sheet = getTab(type);
+    if (sheet.getLastRow() < 2) continue;
     const columns = columnsOf(type);
     const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, columns.length).getValues();
     const idIndex = columns.findIndex(function (c) { return c[0] === "id"; });

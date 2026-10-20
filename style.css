@@ -294,6 +294,98 @@ input:focus, select:focus {
   cursor: pointer;
 }
 
+/* ---------- Weight tab ---------- */
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.stat-label, .stat-note { font-size: 0.8rem; color: var(--muted); }
+.stat-value { font-size: 1.6rem; font-weight: 600; margin: 2px 0; }
+
+.range-buttons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.range-buttons button {
+  flex: 1;
+  padding: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.range-buttons button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.chart-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  margin-bottom: 12px;
+}
+
+/* The morning chart stands out; the other one stays quiet */
+.chart-card.main { border: 2px solid var(--accent); }
+.chart-card.secondary { opacity: 0.85; }
+.chart-card .hint.small { margin: 4px 0 8px; }
+
+.chart-title { font-weight: 600; }
+.chart-card.secondary .chart-title { font-weight: 500; color: var(--muted); }
+
+.badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.chart-box { position: relative; height: 260px; }
+.chart-box.short { height: 160px; margin-top: 8px; }
+
+h3 { font-size: 1rem; margin: 20px 0 8px; }
+
+#weekly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+#weekly-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#weekly-table th, #weekly-table td {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
 /* ---------- "Saved ✓" message ---------- */
 #toast {
   position: fixed;

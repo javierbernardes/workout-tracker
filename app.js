@@ -253,6 +253,7 @@ tabs.forEach(function (tab) {
     document.getElementById(target).classList.add("active");
 
     if (target === "history") renderHistory();
+    if (target === "weight") renderWeight();
   });
 });
 
@@ -622,7 +623,9 @@ document.getElementById("form-bodyweight").addEventListener("submit", function (
     date: f.date.value,
     weight: Number(f.weight.value),
     unit: f.unit.value,
-    morning: !f.notMorning.checked
+    morning: !f.notMorning.checked,
+    peed: f.peed.checked,
+    pooped: f.pooped.checked
   });
   setPref("weightUnit", f.unit.value);
   showToast("Saved weight ✓");
@@ -660,9 +663,18 @@ function describe(e) {
     return e.sport + " — " + parts.join(" · ");
   }
   if (e.type === "bodyweight") {
-    return "Body weight — " + e.weight + " " + e.unit + (e.morning ? "" : " (not morning)");
+    return "Body weight — " + e.weight + " " + e.unit + (e.morning ? "" : " (not morning)") +
+           toiletNote(e, " · ");
   }
   return "";
+}
+
+// " · after pee and poop", or "" if neither (or not recorded)
+function toiletNote(e, before) {
+  const done = [];
+  if (e.peed) done.push("pee");
+  if (e.pooped) done.push("poop");
+  return done.length ? before + "after " + done.join(" and ") : "";
 }
 
 function renderHistory() {
@@ -744,6 +756,232 @@ function renderHistory() {
 
 
 // =====================================================
+//  9b. WEIGHT TAB: weekly averages and charts
+//  Averages use morning weigh-ins only (the most comparable ones).
+// =====================================================
+
+const LB_PER_KG = 2.20462;
+let weightRangeDays = getPref("weightRange", "91");   // how far back to show; "" = all
+let morningChart, allChart;                            // the two charts, once drawn
+
+// A Date -> "2026-10-20" (in your time zone)
+function localDateText(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" +
+         String(d.getDate()).padStart(2, "0");
+}
+
+// "2026-10-20" plus or minus some days
+function shiftDate(dateText, days) {
+  const d = new Date(dateText + "T00:00");
+  d.setDate(d.getDate() + days);
+  return localDateText(d);
+}
+
+// The Monday of that date's week, e.g. Thu "2026-10-22" -> Mon "2026-10-19"
+function weekStart(dateText) {
+  const d = new Date(dateText + "T00:00");
+  return shiftDate(dateText, -((d.getDay() + 6) % 7));
+}
+
+// A weigh-in in kg or lb (converting if you logged it in the other unit)
+function weightIn(e, unit) {
+  let w = e.weight;
+  if (e.unit !== unit) w = unit === "kg" ? w / LB_PER_KG : w * LB_PER_KG;
+  return w;
+}
+
+function round1(n) {
+  return Math.round(n * 10) / 10;
+}
+
+// Group weigh-ins by week: [{ week: "2026-10-19", average: 80.2, count: 4 }, ...] oldest first
+function weeklyAverages(weighIns, unit) {
+  const weeks = {};
+  weighIns.forEach(function (e) {
+    const week = weekStart(e.date);
+    weeks[week] = weeks[week] || [];
+    weeks[week].push(weightIn(e, unit));
+  });
+  return Object.keys(weeks).sort().map(function (week) {
+    const list = weeks[week];
+    const total = list.reduce(function (sum, w) { return sum + w; }, 0);
+    return { week: week, average: round1(total / list.length), count: list.length };
+  });
+}
+
+// The range buttons above the charts
+document.querySelectorAll(".range-buttons button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    weightRangeDays = button.dataset.days;
+    setPref("weightRange", weightRangeDays);
+    renderWeight();
+  });
+});
+
+function renderWeight() {
+  const unit = getPref("weightUnit", "kg");
+  const weighIns = loadEntries()
+    .filter(function (e) { return e.type === "bodyweight"; })
+    .sort(function (a, b) { return (a.date + a.createdAt).localeCompare(b.date + b.createdAt); });
+
+  document.getElementById("weight-empty").hidden = weighIns.length > 0;
+  document.getElementById("weight-content").hidden = weighIns.length === 0;
+  if (weighIns.length === 0) return;
+
+  const morning = weighIns.filter(function (e) { return e.morning; });
+  const weeks = weeklyAverages(morning, unit);
+
+  // --- The two numbers at the top (always this week vs last week) ---
+  const thisWeek = weeks.find(function (w) { return w.week === weekStart(today()); });
+  const lastWeek = weeks.find(function (w) { return w.week === weekStart(shiftDate(today(), -7)); });
+
+  document.getElementById("stat-week").textContent = thisWeek ? thisWeek.average + " " + unit : "–";
+  document.getElementById("stat-week-note").textContent = thisWeek
+    ? thisWeek.count + (thisWeek.count === 1 ? " morning weigh-in" : " morning weigh-ins")
+    : "No morning weigh-ins yet";
+
+  if (thisWeek && lastWeek) {
+    const change = round1(thisWeek.average - lastWeek.average);
+    document.getElementById("stat-change").textContent =
+      (change > 0 ? "+" : change < 0 ? "−" : "") + Math.abs(change).toFixed(1) + " " + unit;
+    document.getElementById("stat-change-note").textContent = "Last week: " + lastWeek.average + " " + unit;
+  } else {
+    document.getElementById("stat-change").textContent = "–";
+    document.getElementById("stat-change-note").textContent = "Needs a morning weigh-in in both weeks";
+  }
+
+  // --- Only what's inside the chosen range ---
+  document.querySelectorAll(".range-buttons button").forEach(function (button) {
+    button.classList.toggle("active", button.dataset.days === weightRangeDays);
+  });
+  const from = weightRangeDays ? shiftDate(today(), -Number(weightRangeDays)) : "";
+  const shown = weighIns.filter(function (e) { return e.date >= from; });
+  const shownWeeks = weeks.filter(function (w) { return w.week >= weekStart(from || w.week); });
+
+  // --- The weekly table, newest first ---
+  const tbody = document.querySelector("#weekly-table tbody");
+  tbody.innerHTML = "";
+  shownWeeks.slice().reverse().forEach(function (w) {
+    const row = document.createElement("tr");
+    [formatDate(w.week), w.average + " " + unit, w.count].forEach(function (value) {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+    tbody.appendChild(row);
+  });
+
+  drawWeightCharts(shown, shownWeeks, unit);
+}
+
+// One dot on a chart: x is the date as a number, y the weight.
+// "date" and "note" are extra info for the tooltip.
+function weightPoint(e, unit) {
+  return {
+    x: new Date(e.date + "T00:00").getTime(),
+    y: round1(weightIn(e, unit)),
+    date: e.date,
+    note: toiletNote(e, " · ")
+  };
+}
+
+function drawWeightCharts(shown, weeks, unit) {
+  // Chart.js comes from the internet; without a connection, skip the charts
+  const chartsLoaded = typeof Chart !== "undefined";
+  document.getElementById("chart-offline").hidden = chartsLoaded;
+  document.querySelectorAll(".chart-card").forEach(function (card) { card.hidden = !chartsLoaded; });
+  if (!chartsLoaded) return;
+
+  // Use the page's own colors, so the charts follow light/dark mode
+  const css = getComputedStyle(document.documentElement);
+  const colors = {
+    accent: css.getPropertyValue("--accent").trim(),
+    muted: css.getPropertyValue("--muted").trim(),
+    border: css.getPropertyValue("--border").trim(),
+    card: css.getPropertyValue("--card").trim()
+  };
+
+  const morning = shown.filter(function (e) { return e.morning; });
+  const other = shown.filter(function (e) { return !e.morning; });
+
+  // The weekly average is drawn on the Thursday, the middle of each week
+  // (or today, for this week, so the line doesn't run into the future)
+  const averageLine = weeks.map(function (w) {
+    const middle = shiftDate(w.week, 3) > today() ? today() : shiftDate(w.week, 3);
+    return { x: new Date(middle + "T00:00").getTime(), y: w.average,
+             date: w.week, note: " · " + w.count + (w.count === 1 ? " weigh-in" : " weigh-ins"),
+             isWeek: true };
+  });
+
+  if (morningChart) morningChart.destroy();
+  morningChart = new Chart(document.getElementById("chart-morning"), {
+    type: "line",
+    data: { datasets: [
+      { label: "Weekly average", data: averageLine, borderColor: colors.accent,
+        backgroundColor: colors.accent, borderWidth: 2,
+        pointRadius: averageLine.length === 1 ? 4 : 0, pointHoverRadius: 5 },
+      { label: "Morning weigh-in", data: morning.map(function (e) { return weightPoint(e, unit); }),
+        showLine: false, pointRadius: 4, pointHoverRadius: 6,
+        backgroundColor: colors.accent + "70", borderColor: colors.card, borderWidth: 1 }
+    ]},
+    options: chartOptions(colors, unit)
+  });
+
+  if (allChart) allChart.destroy();
+  allChart = new Chart(document.getElementById("chart-all"), {
+    type: "line",
+    data: { datasets: [
+      { label: "Morning", data: morning.map(function (e) { return weightPoint(e, unit); }),
+        showLine: false, pointRadius: 4, pointHoverRadius: 6,
+        backgroundColor: colors.accent + "70", borderColor: colors.card, borderWidth: 1 },
+      { label: "Other times", data: other.map(function (e) { return weightPoint(e, unit); }),
+        showLine: false, pointRadius: 5, pointHoverRadius: 7, pointStyle: "triangle",
+        backgroundColor: colors.muted, borderColor: colors.card, borderWidth: 1 }
+    ]},
+    options: chartOptions(colors, unit)
+  });
+}
+
+// Settings shared by both charts: quiet axes, dates on the bottom, a helpful tooltip
+function chartOptions(colors, unit) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: "nearest", intersect: false },
+    plugins: {
+      legend: { labels: { color: colors.muted, usePointStyle: true, boxWidth: 8, boxHeight: 6 } },
+      tooltip: { callbacks: {
+        title: function (items) {
+          const p = items[0].raw;
+          return (p.isWeek ? "Week of " : "") + formatDate(p.date);
+        },
+        label: function (item) {
+          return item.dataset.label + ": " + item.raw.y + " " + unit + item.raw.note;
+        }
+      }}
+    },
+    scales: {
+      x: {
+        type: "linear",
+        // the axis starts where the chosen range starts, and ends today
+        min: weightRangeDays ? new Date(shiftDate(today(), -Number(weightRangeDays)) + "T00:00").getTime() : undefined,
+        max: new Date(today() + "T00:00").getTime(),
+        grid: { display: false },
+        ticks: { color: colors.muted, maxTicksLimit: 6, callback: function (value) {
+          return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }}
+      },
+      y: {
+        grid: { color: colors.border },
+        ticks: { color: colors.muted, maxTicksLimit: 5 }
+      }
+    }
+  };
+}
+
+
+// =====================================================
 //  10. PROFILE: connecting to Google Sheets
 // =====================================================
 
@@ -776,6 +1014,7 @@ connectionForm.addEventListener("submit", function (event) {
 function refreshViews() {
   renderCurrentWorkout();
   if (document.getElementById("history").classList.contains("active")) renderHistory();
+  if (document.getElementById("weight").classList.contains("active")) renderWeight();
 }
 
 renderCurrentWorkout();
