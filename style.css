@@ -48,7 +48,7 @@ header h1 {
   margin: 24px 0 16px;
 }
 
-.account { margin-top: 24px; }
+.account { margin-top: 32px; }
 .account p { margin: 0; }
 
 /* ---------- Tabs ---------- */
@@ -313,6 +313,162 @@ input:focus, select:focus {
   font: inherit;
   cursor: pointer;
 }
+
+/* ---------- Morning routine screens (cover the whole page) ---------- */
+.morning {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.morning-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.morning-step h1 { margin: 0; font-size: 1.8rem; }
+.morning-step p { margin: 0; }
+.morning-emoji { font-size: 4rem; line-height: 1; }
+
+.big-button {
+  width: 100%;
+  padding: 22px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 18px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(47, 111, 237, 0.35);
+}
+
+.morning-manual { width: 100%; color: var(--accent); }
+.morning-manual summary { cursor: pointer; padding: 8px; }
+.morning-manual-row { display: flex; gap: 8px; margin-top: 8px; }
+.morning-manual-row .secondary { flex: 0 0 auto; padding: 10px 18px; }
+
+.link-button.morning-skip { margin-top: 8px; color: var(--muted); font-size: 0.9rem; }
+
+/* The big weight box */
+.big-weight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.big-weight input {
+  flex: 1;
+  padding: 18px;
+  border-radius: 18px;
+  font-size: 2.6rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.big-weight select { width: auto; font-size: 1.2rem; padding: 16px 10px; border-radius: 14px; }
+
+/* Pee / Poop as tappable pills */
+.pill-row { display: flex; gap: 10px; }
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  cursor: pointer;
+}
+
+.pill input { width: auto; }
+.pill:has(input:checked) { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* ---------- Today box (top of the Log tab) ---------- */
+.today-box {
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.today-label { font-size: 0.85rem; color: var(--muted); }
+.today-value { font-size: 2rem; font-weight: 700; margin: 2px 0; }
+
+.today-wake {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+/* Buttons that look like links */
+.link-button {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* An invisible time picker laid over "change", so tapping it opens the picker */
+.hidden-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Easy / Moderate / Hard on Finish workout */
+.effort {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.effort legend { padding: 0 4px; font-size: 0.9rem; color: var(--muted); }
+
+.log-form .effort label {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text);
+}
+
+.effort input { width: auto; }
+
+/* Height in feet and inches: two boxes side by side */
+.ft-in { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* Calories shown on History cards */
+.kcal { color: var(--accent); font-weight: 600; white-space: nowrap; }
 
 /* ---------- Weight tab ---------- */
 .stat-row {

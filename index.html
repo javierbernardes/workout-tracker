@@ -7,8 +7,65 @@
   <title>Workout Tracker</title>
   <!-- Load the design (colors, spacing, fonts) from style.css -->
   <link rel="stylesheet" href="style.css">
+
+  <!-- Makes it installable as an app: name, icon, opens full screen from the home screen.
+       (iPhones only allow notifications for websites installed this way.) -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Workouts">
+  <meta name="theme-color" content="#2f6fed">
 </head>
 <body>
+
+  <!-- ============ MORNING ROUTINE: shown first each day, until done ============ -->
+  <div id="morning" class="morning" hidden>
+
+    <!-- Step 1: wake-up time -->
+    <div id="morning-wake" class="morning-step" hidden>
+      <div class="morning-emoji">☀️</div>
+      <h1>Good morning!</h1>
+      <p class="hint">What time did you wake up today?</p>
+
+      <button type="button" id="wake-now" class="big-button">I just woke up</button>
+
+      <!-- "details" = a section that opens when you tap its summary line -->
+      <details class="morning-manual">
+        <summary>I woke up earlier, enter the time</summary>
+        <div class="morning-manual-row">
+          <input type="time" id="wake-manual">
+          <button type="button" id="wake-manual-save" class="secondary">Save</button>
+        </div>
+      </details>
+
+      <button type="button" id="wake-skip" class="link-button morning-skip">Skip today</button>
+    </div>
+
+    <!-- Step 2: the morning weigh-in -->
+    <div id="morning-weigh" class="morning-step" hidden>
+      <div class="morning-emoji">⚖️</div>
+      <h1>Daily morning weigh-in</h1>
+      <p class="hint">Right after waking up, before eating or drinking, is the most comparable.</p>
+
+      <div class="big-weight">
+        <input type="number" id="mw-weight" min="20" max="700" step="0.1" inputmode="decimal" placeholder="0.0">
+        <select id="mw-unit">
+          <option value="kg">kg</option>
+          <option value="lb">lb</option>
+        </select>
+      </div>
+
+      <p class="hint small">Before weighing, did you…</p>
+      <div class="pill-row">
+        <label class="pill"><input type="checkbox" id="mw-peed"> Pee</label>
+        <label class="pill"><input type="checkbox" id="mw-pooped"> Poop</label>
+      </div>
+
+      <button type="button" id="mw-save" class="big-button">Save weight</button>
+      <button type="button" id="mw-later" class="link-button morning-skip">Add weight later</button>
+    </div>
+  </div>
 
   <header>
     <h1>Workout Tracker</h1>
@@ -30,6 +87,19 @@
 
       <!-- First you pick the type; data-form says which form it opens -->
       <div id="type-picker">
+        <!-- TODAY: estimated calories burned so far (filled in by app.js, every minute) -->
+        <div id="today-box" class="today-box">
+          <div class="today-label">🔥 Burned today so far</div>
+          <div class="today-value" id="today-kcal">–</div>
+          <div class="hint small" id="today-split"></div>
+          <div class="today-wake">
+            <span id="today-wake-text"></span>
+            <label class="link-button">change
+              <input type="time" id="wake-time" class="hidden-input">
+            </label>
+          </div>
+        </div>
+
         <h2>Log a workout</h2>
 
         <!-- Shown when no workout is running -->
@@ -78,6 +148,17 @@
           <input type="number" name="minutes" min="1" step="1" inputmode="numeric" required>
         </label>
         <p class="hint small" id="finish-hint">Filled in from the timer. Change it if you finished earlier.</p>
+
+        <!-- How hard were the weights? Changes the calorie estimate -->
+        <fieldset class="effort">
+          <legend>How hard were the weights?</legend>
+          <label><input type="radio" name="effort" value="easy"> Easy
+            <span class="hint small">normal session, plenty of rest</span></label>
+          <label><input type="radio" name="effort" value="moderate" checked> Moderate
+            <span class="hint small">heavy lifts (squats, deadlifts), short rests</span></label>
+          <label><input type="radio" name="effort" value="hard"> Hard
+            <span class="hint small">very intense, barely any rest</span></label>
+        </fieldset>
 
         <label>Notes (optional)
           <input name="notes" placeholder="e.g. push day">
@@ -163,6 +244,11 @@
 
         <label data-show="Stairmaster">Floors climbed (optional)
           <input type="number" name="floors" min="0" step="1" inputmode="numeric">
+        </label>
+
+        <!-- Holding on burns about 20% less, so the estimate goes down -->
+        <label class="check" data-show="Incline walking,Walking,Running,Stairmaster">
+          <input type="checkbox" name="rails"> I held the handrails
         </label>
 
         <label>Notes (optional)
@@ -331,8 +417,55 @@
 
     <!-- ============ PROFILE: height, age, sex (for calorie estimates) ============ -->
     <section id="profile" class="section">
-      <h2>Profile</h2>
-      <p class="hint">Your height, age and sex will go here.</p>
+      <!-- Your body details, used to estimate calories (synced like your logs) -->
+      <form id="form-profile" class="log-form">
+        <h2>Profile</h2>
+        <p class="hint small">Used to estimate your resting burn and calories. Weight comes from your latest weigh-in.</p>
+
+        <div class="row">
+          <label>Height
+            <input type="number" name="heightCm" min="100" max="250" step="0.5" inputmode="decimal" placeholder="cm">
+            <span class="ft-in" hidden>
+              <input type="number" name="heightFt" min="3" max="8" step="1" inputmode="numeric" placeholder="ft">
+              <input type="number" name="heightIn" min="0" max="11.5" step="0.5" inputmode="decimal" placeholder="in">
+            </span>
+          </label>
+          <label>Unit
+            <select name="heightUnit">
+              <option value="cm">cm</option>
+              <option value="ftin">ft &amp; in</option>
+            </select>
+          </label>
+        </div>
+
+        <label>Date of birth
+          <input type="date" name="birthDate" required>
+        </label>
+
+        <label>Sex (for the resting-burn formula)
+          <select name="sex" required>
+            <option value="">Choose…</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </label>
+
+        <button type="submit" class="save">Save profile</button>
+        <p class="hint small" id="profile-rmr"></p>
+      </form>
+
+      <!-- The daily "Good morning" notification (app.js fills this in) -->
+      <div id="notify-box" class="log-form account">
+        <h2>Morning notification</h2>
+        <p class="hint small">A reminder each morning to log your wake-up time and weight. Tapping it just opens
+          the tracker. It's skipped on days you've already done both.</p>
+        <p class="hint small" id="notify-status"></p>
+        <label>Send it at
+          <input type="time" id="notify-time" value="07:00">
+        </label>
+        <button type="button" id="notify-on" class="save">Turn on</button>
+        <button type="button" id="notify-off" class="secondary" hidden>Turn off</button>
+      </div>
 
       <!-- Where your data is saved. Filled in once per device. -->
       <!-- Account: the sign-in form, or who you're signed in as (app.js shows one) -->

@@ -556,6 +556,7 @@ document.getElementById("form-finish").addEventListener("submit", function (even
     date: f.date.value,
     time: f.time.value,
     minutes: Number(f.minutes.value),
+    effort: f.effort.value,          // easy / moderate / hard, for the calorie estimate
     notes: f.notes.value.trim()
   });
   setActiveWorkout(null);
@@ -746,6 +747,7 @@ cardioForm.addEventListener("submit", function (event) {
     entry.speedUnit = f.speedUnit.value;
     setPref("speedUnit", f.speedUnit.value);
   }
+  if (isVisible(f.rails) && f.rails.checked) entry.rails = true;
 
   addEntry(entry);
   showToast("Added " + activity + " ✓");
@@ -804,7 +806,7 @@ document.getElementById("form-bodyweight").addEventListener("submit", function (
 //  9. HISTORY LIST
 // =====================================================
 
-const ICONS = { workout: "💪", weights: "🏋️", cardio: "🏃", sports: "🎾", bodyweight: "⚖️" };
+const ICONS = { workout: "💪", weights: "🏋️", cardio: "🏃", sports: "🎾", bodyweight: "⚖️", wake: "☀️" };
 
 // Turn one entry into a short line of text
 function describe(e) {
@@ -821,6 +823,7 @@ function describe(e) {
     if (e.incline !== undefined) parts.push(e.incline + "% incline");
     if (e.level !== undefined) parts.push("level " + e.level);
     if (e.floors !== undefined) parts.push(e.floors + " floors");
+    if (e.rails) parts.push("held rails");
     return e.activity + " — " + parts.join(" · ");
   }
   if (e.type === "sports") {
@@ -833,6 +836,7 @@ function describe(e) {
     return "Body weight — " + e.weight + " " + e.unit + (e.morning ? "" : " (not morning)") +
            toiletNote(e, " · ");
   }
+  if (e.type === "wake") return "Woke up";
   return "";
 }
 
@@ -889,6 +893,7 @@ function renderHistory() {
 
   // Newest first, only the kind chosen in the filter
   const entries = all.filter(function (e) {
+    if (e.type === "profile") return false;     // your profile isn't a log
     return !e.workoutId || !workoutIds.includes(e.workoutId);
   }).filter(function (e) {
     return historyFilter === "all" || FILTER_GROUP[e.type] === historyFilter;
@@ -911,6 +916,14 @@ function renderHistory() {
       const heading = document.createElement("li");
       heading.className = "day-heading";
       heading.textContent = dayLabel(e.date);
+      // The day's estimated total (today: so far)
+      const day = dayCalories(e.date, e.date === today() ? nowMinutes() : 1440);
+      if (day) {
+        const total = document.createElement("span");
+        total.className = "kcal";
+        total.textContent = " · ≈ " + kcalText(day.total) + " kcal burned" + (e.date === today() ? " so far" : "");
+        heading.appendChild(total);
+      }
       list.appendChild(heading);
       previousDate = e.date;
     }
@@ -921,6 +934,12 @@ function renderHistory() {
     const text = document.createElement("div");
     const title = document.createElement("div");
     title.textContent = ICONS[e.type] + " " + describe(e);
+    // Estimated extra calories for exercise entries
+    const kg = weightKgOn(e.date);
+    const burned = kg && restingPerDay(e.date) ? entryKcal(e, kg) : 0;
+    const kcalLabel = document.createElement("span");
+    kcalLabel.className = "kcal";
+    if (burned > 0) kcalLabel.textContent = " · ≈ " + kcalText(burned) + " kcal";
     const details = document.createElement("div");
     details.className = "hint small";
     details.textContent = formatTime(entryTime(e)) + (e.notes ? " · " + e.notes : "");
@@ -930,6 +949,7 @@ function renderHistory() {
     const children = e.type === "workout" ? exercisesOf(e.id) : [];
     if (e.type === "workout") {
       title.textContent += " · " + children.length + (children.length === 1 ? " exercise" : " exercises");
+      if (e.effort) title.textContent += " · " + e.effort;
       const sub = document.createElement("ul");
       sub.className = "sub-list";
       children.sort(function (a, b) { return entryTime(a).localeCompare(entryTime(b)); });
@@ -940,6 +960,7 @@ function renderHistory() {
       });
       text.appendChild(sub);
     }
+    title.appendChild(kcalLabel);
 
     const remove = document.createElement("button");
     remove.className = "delete";
@@ -1194,8 +1215,491 @@ function chartOptions(colors, unit) {
 
 
 // =====================================================
+//  9c. CALORIES
+//  Based on our research (reports/Calorie estimation for workout tracker.md):
+//  - Resting burn (Mifflin-St Jeor formula), counted minute by minute from midnight
+//  - Everyday movement: +20% of resting, only while awake and not exercising
+//  - Exercise: only the EXTRA calories above resting ("net"), so nothing counts twice
+//  Food digestion and "afterburn" are left out on purpose, to keep it conservative.
+// =====================================================
+
+// MET = how many times harder than sitting still. From the 2024 Compendium.
+const WEIGHTS_MET = { easy: 3.5, moderate: 5.0, hard: 6.0 };
+
+// Sports: the first name that appears in what you typed wins; anything else gets 5.0
+const SPORT_METS = [
+  ["padel", 6.0], ["pickleball", 4.5], ["tennis", 6.0], ["golf", 4.5],
+  ["soccer", 7.0], ["football", 7.0], ["basketball", 6.0], ["volleyball", 4.0],
+  ["swim", 5.8], ["cycl", 5.0], ["bik", 5.0]
+];
+const DEFAULT_MET = 5.0;
+
+// Running speed (mph) -> MET, from the Compendium; in-between speeds are blended
+const RUNNING_METS = [[4, 6.0], [5, 8.5], [6, 9.3], [7, 11.0], [8, 12.0], [9, 13.0], [10, 14.8]];
+
+// Your saved profile (height, birth date, sex), or null
+function getProfile() {
+  return loadEntries().find(function (e) { return e.type === "profile"; }) || null;
+}
+
+// The wake-up entry for a day, or undefined
+function wakeEntryFor(date) {
+  return loadEntries().find(function (e) { return e.type === "wake" && e.date === date; });
+}
+
+// "07:30" -> 450 (minutes since midnight)
+function minutesOf(timeText) {
+  const parts = (timeText || "00:00").split(":");
+  return Number(parts[0]) * 60 + Number(parts[1]);
+}
+
+// Your weight in kg on a day: the latest morning weigh-in up to that day
+// (or any weigh-in, or failing that, the earliest one you have)
+function weightKgOn(date) {
+  const weighIns = loadEntries()
+    .filter(function (e) { return e.type === "bodyweight"; })
+    .sort(function (a, b) { return (a.date + entryTime(a)).localeCompare(b.date + entryTime(b)); });
+  const upTo = weighIns.filter(function (e) { return e.date <= date; });
+  const morningOnes = upTo.filter(function (e) { return e.morning; });
+  const pick = morningOnes[morningOnes.length - 1] || upTo[upTo.length - 1] || weighIns[0];
+  return pick ? weightIn(pick, "kg") : null;
+}
+
+// Age in whole years on a given date
+function ageOn(birthDate, date) {
+  const b = new Date(birthDate + "T00:00"), d = new Date(date + "T00:00");
+  let age = d.getFullYear() - b.getFullYear();
+  if (d < new Date(d.getFullYear(), b.getMonth(), b.getDate())) age--;
+  return age;
+}
+
+// Resting burn for a whole day (kcal), or null if the profile or a weigh-in is missing
+function restingPerDay(date) {
+  const p = getProfile();
+  const kg = weightKgOn(date);
+  if (!p || !p.heightCm || !p.birthDate || !p.sex || !kg) return null;
+  return 10 * kg + 6.25 * p.heightCm - 5 * ageOn(p.birthDate, date) + (p.sex === "male" ? 5 : -161);
+}
+
+// Extra calories for doing something at a given MET for some minutes
+function netKcal(met, minutes, kg) {
+  return Math.max(0, met - 1) * (3.5 * kg / 200) * minutes;
+}
+
+// Extra calories for one cardio entry
+function cardioKcal(e, kg) {
+  const a = e.activity;
+  const hasSpeed = e.speed !== undefined && e.speed > 0;
+  const mph = hasSpeed ? (e.speedUnit === "mph" ? e.speed : e.speed / 1.609) : 0;
+  const metersPerMin = mph * 26.8;
+  const grade = Math.min(e.incline || 0, 15) / 100;   // steeper than 15% is capped (formulas overshoot)
+  let kcal;
+
+  if ((a === "Walking" || a === "Incline walking") && hasSpeed) {
+    // ACSM walking formula: uses your real speed and incline
+    kcal = (0.1 * metersPerMin + 1.8 * metersPerMin * grade) * kg / 200 * e.minutes;
+  } else if (a === "Running" && hasSpeed) {
+    // Compendium value for the speed, plus the extra cost of the incline
+    let met = RUNNING_METS[0][1];
+    RUNNING_METS.forEach(function (point, i) {
+      const next = RUNNING_METS[i + 1];
+      if (mph >= point[0]) met = next && mph < next[0]
+        ? point[1] + (next[1] - point[1]) * (mph - point[0]) / (next[0] - point[0])
+        : point[1];
+    });
+    met += 0.9 * metersPerMin * grade / 3.5;
+    kcal = netKcal(met, e.minutes, kg);
+  } else {
+    let met = DEFAULT_MET;
+    if (a === "Walking") met = 3.5;
+    if (a === "Incline walking") met = 6.0;
+    if (a === "Running") met = 8.0;
+    if (a === "Stairmaster") met = !e.level ? 6.8 : e.level <= 4 ? 4.5 : e.level <= 8 ? 6.8 : 9.3;
+    kcal = netKcal(met, e.minutes, kg);
+  }
+  return e.rails ? kcal * 0.8 : kcal;   // holding the handrails burns about 20% less
+}
+
+function sportKcal(e, kg) {
+  const name = (e.sport || "").toLowerCase();
+  const match = SPORT_METS.find(function (s) { return name.includes(s[0]); });
+  return netKcal(match ? match[1] : DEFAULT_MET, e.minutes, kg);
+}
+
+// A workout: its cardio, plus weights for the rest of the minutes
+function workoutKcal(workout, kg) {
+  const parts = loadEntries().filter(function (e) { return e.workoutId === workout.id; });
+  const cardio = parts.filter(function (e) { return e.type === "cardio"; });
+  const hasWeights = parts.some(function (e) { return e.type === "weights"; });
+  const cardioMinutes = cardio.reduce(function (sum, e) { return sum + e.minutes; }, 0);
+  const weightsMinutes = hasWeights ? Math.max(0, workout.minutes - cardioMinutes) : 0;
+  const met = WEIGHTS_MET[workout.effort] || WEIGHTS_MET.easy;   // older workouts: easy
+  return cardio.reduce(function (sum, e) { return sum + cardioKcal(e, kg); }, 0) +
+         netKcal(met, weightsMinutes, kg);
+}
+
+// Calories for any loggable entry (0 for things that aren't exercise)
+function entryKcal(e, kg) {
+  if (e.type === "workout") return workoutKcal(e, kg);
+  if (e.type === "sports") return sportKcal(e, kg);
+  if (e.type === "cardio") return cardioKcal(e, kg);
+  return 0;
+}
+
+// A whole day (or today up to now): { resting, movement, exercise, total, wakeAssumed }
+// upToMinutes = how many minutes of the day to count (1440 = the whole day)
+function dayCalories(date, upToMinutes) {
+  const resting = restingPerDay(date);
+  if (resting === null) return null;
+  const kg = weightKgOn(date);
+  const perMinute = resting / 1440;
+
+  let exercise = 0, exerciseMinutes = 0;
+  loadEntries().forEach(function (e) {
+    if (e.date !== date || minutesOf(entryTime(e)) > upToMinutes) return;
+    const standaloneCardio = e.type === "cardio" && !e.workoutId;
+    if (e.type === "workout" || e.type === "sports" || standaloneCardio) {
+      exercise += entryKcal(e, kg);
+      exerciseMinutes += e.minutes;
+    }
+  });
+
+  // Awake time: from waking (7:00 if not logged) for at most 16 hours
+  const wake = wakeEntryFor(date);
+  const wakeMinutes = wake ? minutesOf(wake.time) : 7 * 60;
+  const awake = Math.max(0, Math.min(upToMinutes, wakeMinutes + 16 * 60) - wakeMinutes);
+  const movement = 0.2 * perMinute * Math.max(0, awake - exerciseMinutes);
+
+  const restingSoFar = perMinute * upToMinutes;
+  return { resting: restingSoFar, movement: movement, exercise: exercise,
+           total: restingSoFar + movement + exercise, wakeAssumed: !wake };
+}
+
+// 1590.4 -> "1,590"
+function kcalText(n) {
+  return Math.round(n).toLocaleString("en-US");
+}
+
+function nowMinutes() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+// The "Burned today so far" box at the top of the Log tab
+function renderToday() {
+  const t = today();
+  const wake = wakeEntryFor(t);
+  document.getElementById("today-wake-text").textContent = wake
+    ? "☀️ Woke up at " + formatTime(wake.time)
+    : "☀️ Wake-up not logged (assuming 7:00 AM)";
+  document.getElementById("wake-time").value = wake ? wake.time : "";
+
+  const day = dayCalories(t, nowMinutes());
+  const value = document.getElementById("today-kcal");
+  const split = document.getElementById("today-split");
+  if (!day) {
+    value.textContent = "–";
+    split.textContent = getProfile()
+      ? "Log a weigh-in to see your calories."
+      : "Add your height, birth date and sex in Profile to see your calories.";
+    return;
+  }
+  value.textContent = "≈ " + kcalText(day.total) + " kcal";
+  split.textContent = "Resting " + kcalText(day.resting) + " · Movement " + kcalText(day.movement) +
+                      " · Exercise " + kcalText(day.exercise);
+}
+setInterval(renderToday, 60000);   // keep it current, once a minute
+
+// Change today's wake-up time from the Today box
+document.getElementById("wake-time").addEventListener("change", function (event) {
+  if (event.target.value) logWake(event.target.value);
+});
+
+
+// =====================================================
+//  9d. MORNING ROUTINE
+//  Each day, before the rest of the site: 1) wake-up time, 2) weigh-in.
+// =====================================================
+
+function logWake(time) {
+  const t = today();
+  // One wake-up per day: its id includes the date, so saving again replaces it
+  addEntry({ id: "wake-" + t, type: "wake", date: t, time: time });
+  showToast("Woke up at " + formatTime(time) + " ✓");
+  renderToday();
+}
+
+// Show the step that's still needed today, or nothing
+function showMorning() {
+  const t = today();
+  const needWake = !wakeEntryFor(t) && getPref("wakeSkipped", "") !== t;
+  const needWeigh = !loadEntries().some(function (e) {
+    return e.type === "bodyweight" && e.date === t && e.morning;
+  }) && getPref("weighLater", "") !== t;
+
+  const wakeStep = document.getElementById("morning-wake");
+  const weighStep = document.getElementById("morning-weigh");
+  const wasWeighing = !weighStep.hidden;
+  wakeStep.hidden = !needWake;
+  weighStep.hidden = needWake || !needWeigh;
+  document.getElementById("morning").hidden = !needWake && !needWeigh;
+
+  // Getting the weigh-in ready (only when it first appears, not while you type)
+  if (!weighStep.hidden && !wasWeighing) {
+    document.getElementById("mw-unit").value = getPref("weightUnit", "kg");
+    document.getElementById("mw-weight").value = "";
+    document.getElementById("mw-peed").checked = false;
+    document.getElementById("mw-pooped").checked = false;
+  }
+}
+
+document.getElementById("wake-now").addEventListener("click", function () {
+  logWake(timeOf());
+  showMorning();
+});
+
+document.getElementById("wake-manual-save").addEventListener("click", function () {
+  const time = document.getElementById("wake-manual").value;
+  if (!time) { showToast("Pick the time you woke up"); return; }
+  logWake(time);
+  showMorning();
+});
+
+document.getElementById("wake-skip").addEventListener("click", function () {
+  setPref("wakeSkipped", today());
+  showMorning();
+});
+
+document.getElementById("mw-save").addEventListener("click", function () {
+  const weight = Number(document.getElementById("mw-weight").value);
+  if (!(weight >= 20 && weight <= 700)) { showToast("Type your weight first"); return; }
+  const unit = document.getElementById("mw-unit").value;
+  addEntry({
+    type: "bodyweight",
+    date: today(),
+    time: timeOf(),
+    weight: weight,
+    unit: unit,
+    morning: true,
+    peed: document.getElementById("mw-peed").checked,
+    pooped: document.getElementById("mw-pooped").checked
+  });
+  setPref("weightUnit", unit);
+  showToast("Saved " + weight + " " + unit + " ✓");
+  showMorning();
+  renderToday();
+});
+
+document.getElementById("mw-later").addEventListener("click", function () {
+  setPref("weighLater", today());
+  showMorning();
+});
+
+
+// =====================================================
 //  10. PROFILE: your account
 // =====================================================
+
+// ---------- Your body details ----------
+// Saved as one special entry (id "profile"), so it syncs to all your devices
+// like your logs, with no changes needed in Supabase.
+
+const profileForm = document.getElementById("form-profile");
+
+// Show cm, or feet + inches, depending on the chosen unit
+function updateHeightFields() {
+  const ftin = profileForm.elements.heightUnit.value === "ftin";
+  profileForm.elements.heightCm.hidden = ftin;
+  profileForm.querySelector(".ft-in").hidden = !ftin;
+}
+profileForm.elements.heightUnit.addEventListener("change", function () {
+  // Carry the number over when switching units
+  const f = profileForm.elements;
+  if (f.heightUnit.value === "ftin" && f.heightCm.value) {
+    const inches = Number(f.heightCm.value) / 2.54;
+    f.heightFt.value = Math.floor(inches / 12);
+    f.heightIn.value = Math.round((inches % 12) * 2) / 2;
+  } else if (f.heightUnit.value === "cm" && f.heightFt.value) {
+    f.heightCm.value = Math.round((Number(f.heightFt.value) * 12 + Number(f.heightIn.value || 0)) * 2.54);
+  }
+  setPref("heightUnit", f.heightUnit.value);
+  updateHeightFields();
+});
+
+// Fill the form with what's saved
+function renderProfile() {
+  const p = getProfile() || {};
+  const f = profileForm.elements;
+  f.heightUnit.value = getPref("heightUnit", "cm");
+  f.heightCm.value = p.heightCm ? Math.round(p.heightCm * 2) / 2 : "";
+  if (p.heightCm) {
+    const inches = p.heightCm / 2.54;
+    f.heightFt.value = Math.floor(inches / 12);
+    f.heightIn.value = Math.round((inches % 12) * 2) / 2;
+  }
+  f.birthDate.value = p.birthDate || "";
+  f.sex.value = p.sex || "";
+  updateHeightFields();
+
+  const resting = restingPerDay(today());
+  document.getElementById("profile-rmr").textContent = resting
+    ? "Your estimated resting burn: ≈ " + kcalText(resting) + " kcal per day."
+    : p.heightCm ? "Log a weigh-in to see your resting burn." : "";
+}
+
+profileForm.addEventListener("submit", function (event) {
+  event.preventDefault();
+  const f = profileForm.elements;
+  const heightCm = f.heightUnit.value === "ftin"
+    ? (Number(f.heightFt.value) * 12 + Number(f.heightIn.value || 0)) * 2.54
+    : Number(f.heightCm.value);
+  if (!(heightCm >= 100 && heightCm <= 250)) { showToast("Check your height"); return; }
+
+  addEntry({
+    id: "profile",
+    type: "profile",
+    date: today(),
+    heightCm: Math.round(heightCm * 10) / 10,
+    birthDate: f.birthDate.value,
+    sex: f.sex.value
+  });
+  showToast("Profile saved ✓");
+  renderProfile();
+  renderToday();
+});
+
+
+// ---------- The daily reminder notification ----------
+// The phone gives us an "address" for notifications (a subscription); we store it in
+// Supabase, and the morning-reminder program there sends to it at your chosen time.
+
+const REMINDER_URL = SUPABASE_URL + "/functions/v1/morning-reminder";
+
+// The background helper (sw.js) that shows the notification
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(function () { /* not available here */ });
+}
+
+function notificationsSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+// The key Supabase gives us is written in "base64url"; the phone wants raw bytes
+function keyBytes(base64url) {
+  const base64 = (base64url + "===".slice((base64url.length + 3) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), function (c) { return c.charCodeAt(0); });
+}
+
+async function currentSubscription() {
+  if (!notificationsSupported()) return null;
+  // getRegistration (not "ready"), so we never wait forever if the helper didn't start
+  const helper = await navigator.serviceWorker.getRegistration();
+  return helper ? helper.pushManager.getSubscription() : null;
+}
+
+// Save (or update) this phone's reminder in Supabase
+async function saveSubscription(subscription) {
+  const s = subscription.toJSON();
+  await database("push_subscriptions?on_conflict=endpoint", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify([{
+      endpoint: s.endpoint,
+      user_id: getSession().userId,
+      p256dh: s.keys.p256dh,
+      auth: s.keys.auth,
+      notify_time: getPref("notifyTime", "07:00"),
+      time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }])
+  });
+}
+
+async function renderNotify() {
+  const status = document.getElementById("notify-status");
+  const on = document.getElementById("notify-on");
+  const off = document.getElementById("notify-off");
+  document.getElementById("notify-time").value = getPref("notifyTime", "07:00");
+
+  if (!notificationsSupported()) {
+    const iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    status.textContent = iPhone
+      ? "On iPhone, add the tracker to your Home Screen first (Share → Add to Home Screen), then open it from there."
+      : "This browser can't show notifications.";
+    on.hidden = true;
+    off.hidden = true;
+    return;
+  }
+  const subscription = await currentSubscription();
+  on.hidden = !!subscription;
+  off.hidden = !subscription;
+  if (subscription) {
+    status.textContent = "✓ On. You'll get it at " + formatTime(getPref("notifyTime", "07:00")) + " each day.";
+  } else if (Notification.permission === "denied") {
+    status.textContent = "Notifications are blocked. Allow them in your phone's Settings → Notifications → Workouts.";
+  } else {
+    status.textContent = getSession() ? "" : "Sign in first (Account, below).";
+  }
+}
+
+document.getElementById("notify-on").addEventListener("click", async function () {
+  if (!getSession()) { showToast("Sign in first"); return; }
+  try {
+    // The phone asks: "Allow notifications?" (must happen right after a tap)
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") { renderNotify(); return; }
+
+    const helper = await navigator.serviceWorker.ready;
+    const answer = await (await fetch(REMINDER_URL)).json();
+    const subscription = await helper.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: keyBytes(answer.publicKey)
+    });
+    await saveSubscription(subscription);
+    showToast("Reminder on ✓ Sending a test…");
+    // A test notification right away, so you can see that it works
+    fetch(REMINDER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ test: subscription.endpoint })
+    });
+  } catch (error) {
+    showToast("Couldn't turn it on: " + error.message);
+  }
+  renderNotify();
+});
+
+document.getElementById("notify-off").addEventListener("click", async function () {
+  try {
+    const subscription = await currentSubscription();
+    if (subscription) {
+      await database("push_subscriptions?endpoint=eq." + encodeURIComponent(subscription.endpoint), { method: "DELETE" });
+      await subscription.unsubscribe();
+    }
+    showToast("Reminder off");
+  } catch (error) {
+    showToast("Couldn't turn it off: " + error.message);
+  }
+  renderNotify();
+});
+
+// A new time: remember it, and tell Supabase if the reminder is on
+document.getElementById("notify-time").addEventListener("change", async function (event) {
+  if (!event.target.value) return;
+  setPref("notifyTime", event.target.value);
+  const subscription = await currentSubscription();
+  if (subscription && getSession()) {
+    try {
+      await saveSubscription(subscription);
+      showToast("Reminder time saved ✓");
+    } catch (error) {
+      showToast("Couldn't save the time: " + error.message);
+    }
+  }
+  renderNotify();
+});
+
+
+// ---------- Account ----------
 
 const signInForm = document.getElementById("form-signin");
 
@@ -1205,6 +1709,7 @@ function renderAccount() {
   signInForm.hidden = !!session;
   document.getElementById("signed-in").hidden = !session;
   if (session) document.getElementById("signed-in-email").textContent = session.email;
+  renderNotify();   // the reminder needs you signed in
 }
 
 signInForm.addEventListener("submit", async function (event) {
@@ -1248,11 +1753,27 @@ localStorage.removeItem("pref-lastSync");
 function refreshViews() {
   renderCurrentWorkout();
   renderAccount();
+  renderToday();
+  showMorning();   // e.g. you already logged your wake-up on another device
   if (document.getElementById("history").classList.contains("active")) renderHistory();
   if (document.getElementById("weight").classList.contains("active")) renderWeight();
+  // Refill the profile form, unless you're in the middle of typing in it
+  if (!profileForm.contains(document.activeElement)) renderProfile();
 }
 
 renderCurrentWorkout();
 renderAccount();
+renderProfile();
+renderNotify();
+renderToday();
+showMorning();
 updateSyncStatus();
 sync();
+
+// Coming back to the app (maybe on a new day): check the morning routine again
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") {
+    showMorning();
+    renderToday();
+  }
+});

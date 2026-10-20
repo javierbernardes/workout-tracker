@@ -74,11 +74,39 @@ Just for the user for now, but designed so others can use it later (every entry 
    workout's defaults to its start); weights/cardio get the time they were added. Old entries
    fall back to `createdAt`.
    Not chosen for History (maybe later): editing entries, workout totals (sets, volume).
-5. ⬜ Profile + calorie estimates.
-6. ⬜ Publish on GitHub Pages; add to phone home screen.
+5. ✅ Profile + calorie estimates (built 2026-10-20, from the deep research in
+   `reports/Calorie estimation for workout tracker.md`, kept out of git):
+   - Profile (height cm, birth date, sex) is a synced entry `{id:"profile", type:"profile"}`.
+   - Calories (app.js part 9c): Mifflin-St Jeor resting burn per minute since midnight
+     + 0.2 × resting for awake non-exercise minutes (awake = from wake time, max 16 h;
+     assume 07:00 if not logged) + NET exercise kcal ((MET−1)·3.5·kg/200·min).
+     Walking/incline walking with speed: ACSM net formula, grade capped 15%; running:
+     Compendium speed METs + ACSM grade term; Stairmaster by level 4.5/6.8/9.3; weights
+     Easy/Moderate/Hard 3.5/5/6 on workout minutes minus cardio minutes; sports table
+     (padel 6, golf 4.5, tennis 6, soccer 7…), default 5. "Held the handrails" ×0.8.
+     No food digestion, no afterburn (conservative). Matches the report's worked example.
+   - Today box at the top of Log (updates each minute); History shows kcal per workout/sport
+     and a daily total on each day heading.
+   - Morning routine (part 9d): full-screen "Good morning" wake-up step (big "I just woke up",
+     manual time, "Skip today"), then "Daily morning weigh-in" step ("Add weight later").
+     Wake-up is a synced entry `{id:"wake-YYYY-MM-DD", type:"wake", time}`.
+   - Installable PWA: manifest.json, icons (icon-180/192/512.png, drawn with PowerShell
+     System.Drawing), sw.js (shows push notifications; no offline caching on purpose).
+   - Daily reminder ("Good morning ☀️ Daily wake-up & weigh-in"): Profile → Morning
+     notification. Supabase: tables push_subscriptions (RLS) + push_config (VAPID keys, no
+     policies, service role only), Edge Function `morning-reminder` (verify_jwt off; GET =
+     public key, POST {} = send due reminders, POST {test: endpoint} = test), pg_cron every
+     5 min. Record in `supabase-reminder.sql` + `supabase/functions/morning-reminder/`.
+     The user wanted lock-screen buttons like Spotify: impossible for web apps on iPhone
+     (needs a native App Store app); tapping the reminder only opens the app.
+     Couldn't test push in the preview browser (service workers blocked there).
+6. ✅ Live at https://javierbernardes.github.io/workout-tracker/ (GitHub Pages from `main`,
+   root; repo made Public 2026-10-20). User signed in on phone + added to home screen: works.
+   Pushing to `main` updates the site in ~1–2 min. No custom domain (user declined).
+   Maybe later: a proper app icon / web manifest for the home screen.
 7. ⬜ Later: extras, design polish, other users, optional AI helper.
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
-Repo is currently Private; must be made Public for free GitHub Pages (step 6).
+Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.
 Git signs in via Git Credential Manager (browser); no `gh` CLI installed.
 Commit/push only when the user asks.
