@@ -3,7 +3,8 @@
 <head>
   <!-- Basic settings: text encoding, and "fit the screen" on phones -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- viewport-fit=cover: use the whole iPhone screen; style.css keeps clear of the notch and home bar -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Workout Tracker</title>
   <!-- Load the design (colors, spacing, fonts) from style.css -->
   <link rel="stylesheet" href="style.css">
@@ -75,10 +76,10 @@
 
   <!-- The four main sections. Each "tab" button shows one section. -->
   <nav>
-    <button class="tab active" data-section="log">Log</button>
-    <button class="tab" data-section="history">History</button>
-    <button class="tab" data-section="weight">Weight</button>
-    <button class="tab" data-section="profile">Profile</button>
+    <button class="tab active" data-section="log"><span class="tab-icon">➕</span>Log</button>
+    <button class="tab" data-section="history"><span class="tab-icon">📋</span>History</button>
+    <button class="tab" data-section="weight"><span class="tab-icon">📈</span>Progress</button>
+    <button class="tab" data-section="profile"><span class="tab-icon">👤</span>Profile</button>
   </nav>
 
   <main>
@@ -130,6 +131,21 @@
         </div>
       </div>
 
+      <!-- ---------- WAKE-UP form (only for editing one from History) ---------- -->
+      <form id="form-wake" class="log-form" hidden>
+        <button type="button" class="back">← Back</button>
+        <h2>☀️ Wake-up time</h2>
+        <div class="row">
+          <label>Date
+            <input type="date" name="date" required>
+          </label>
+          <label>Time
+            <input type="time" name="time" required>
+          </label>
+        </div>
+        <button type="submit" class="save">Save</button>
+      </form>
+
       <!-- ---------- FINISH WORKOUT form ---------- -->
       <form id="form-finish" class="log-form" hidden>
         <button type="button" class="back">← Back</button>
@@ -178,6 +194,8 @@
           <input name="exercise" list="exercise-list" placeholder="Start typing, e.g. Bench press" autocomplete="off" required>
         </label>
         <datalist id="exercise-list"></datalist>
+        <!-- "Last time: …  [Use these]" (filled in by app.js when you've done it before) -->
+        <div class="last-time" data-for="weights" hidden></div>
 
         <label>Unit
           <select name="unit">
@@ -212,6 +230,7 @@
             <option>Other</option>
           </select>
         </label>
+        <div class="last-time" data-for="cardio" hidden></div>
 
         <!-- data-show = which activities need this field (app.js hides the rest) -->
         <label data-show="Other">What did you do?
@@ -276,6 +295,7 @@
           <input name="sport" list="sport-list" placeholder="e.g. Padel" autocomplete="off" required>
         </label>
         <datalist id="sport-list"></datalist>
+        <div class="last-time" data-for="sports" hidden></div>
 
         <label>Time played (minutes)
           <input type="number" name="minutes" min="1" step="1" inputmode="numeric" required>
@@ -360,11 +380,57 @@
         <button type="button" data-filter="sports">🎾 Sports</button>
         <button type="button" data-filter="bodyweight">⚖️ Weight</button>
       </div>
+      <p class="hint small">Tap an entry to edit it.</p>
       <ul id="history-list"></ul>
     </section>
 
     <!-- ============ WEIGHT: weekly average and chart ============ -->
     <section id="weight" class="section">
+      <!-- Three views; data-view says which one each button shows -->
+      <div id="progress-views" class="segmented">
+        <button type="button" data-view="view-week">📅 Week</button>
+        <button type="button" data-view="view-weight">⚖️ Weight</button>
+        <button type="button" data-view="view-strength">🏋️ Strength</button>
+      </div>
+
+      <!-- ---------- WEEK: the weekly summary ---------- -->
+      <div id="view-week" class="progress-view" hidden>
+        <div class="week-nav">
+          <button type="button" id="week-prev" class="secondary" title="Previous week">‹</button>
+          <h2 id="week-title">This week</h2>
+          <button type="button" id="week-next" class="secondary" title="Next week">›</button>
+        </div>
+        <div class="stat-grid" id="week-stats"></div>
+        <div class="chart-card">
+          <div class="chart-title">🔥 Calories burned per day</div>
+          <p class="hint small">Estimated; today counts up to now.</p>
+          <div class="chart-box short"><canvas id="chart-week"></canvas></div>
+        </div>
+        <ul id="week-days" class="week-days"></ul>
+      </div>
+
+      <!-- ---------- STRENGTH: progress for one exercise ---------- -->
+      <div id="view-strength" class="progress-view" hidden>
+        <h2>Strength</h2>
+        <p id="strength-empty" class="hint" hidden>No weights logged yet. They'll show up here after your first workout.</p>
+        <div id="strength-content">
+          <label class="field">Exercise
+            <select id="strength-exercise"></select>
+          </label>
+          <div class="stat-row" id="strength-stats"></div>
+          <div class="chart-card main">
+            <div class="chart-title">Estimated max (1 rep)</div>
+            <p class="hint small">Your best set each session, turned into the weight you could likely lift once.
+              It lets you compare 8 × 60 with 5 × 70.</p>
+            <div class="chart-box"><canvas id="chart-strength"></canvas></div>
+          </div>
+          <h3>Sessions</h3>
+          <ul id="strength-sessions" class="sub-list sessions"></ul>
+        </div>
+      </div>
+
+      <!-- ---------- WEIGHT: body weight (as before) ---------- -->
+      <div id="view-weight" class="progress-view" hidden>
       <h2>Body weight</h2>
       <p id="weight-empty" class="hint" hidden>No weigh-ins yet. Log one from the Log tab.</p>
 
@@ -412,6 +478,7 @@
           <thead><tr><th>Week of</th><th>Average</th><th>Weigh-ins</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
       </div>
     </section>
 

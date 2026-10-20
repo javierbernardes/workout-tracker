@@ -75,6 +75,40 @@ nav {
   color: #fff;
 }
 
+.tab-icon { display: none; }
+
+
+/* Clear of the iPhone notch when opened from the home screen */
+header { padding-top: env(safe-area-inset-top); }
+
+/* "Last time: … [Use these]" */
+.last-time {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px dashed var(--accent);
+  font-size: 0.9rem;
+}
+
+.last-time[hidden] { display: none; }
+
+.use-button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ---------- Sections: only the active one is visible ---------- */
 .section { display: none; }
 .section.active { display: block; }
@@ -265,6 +299,11 @@ input:focus, select:focus {
 }
 
 .sub-list li { margin-top: 2px; }
+
+/* Things you can tap to edit */
+.tappable { cursor: pointer; }
+.entry.tappable:hover { border-color: var(--accent); }
+.sub-list li.tappable:hover { color: var(--accent); }
 
 /* ---------- The workout you're in the middle of ---------- */
 #type-picker > .hint { margin-top: 20px; }
@@ -470,6 +509,81 @@ input:focus, select:focus {
 /* Calories shown on History cards */
 .kcal { color: var(--accent); font-weight: 600; white-space: nowrap; }
 
+/* ---------- Progress tab: Week / Weight / Strength switch ---------- */
+.segmented {
+  display: flex;
+  padding: 3px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.segmented button {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.segmented button.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* Week: ‹ This week › */
+.week-nav {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.week-nav h2 { margin: 0; }
+.week-nav button { padding: 6px 0; font-size: 1.2rem; }
+.week-nav button:disabled { opacity: 0.3; cursor: default; }
+
+/* Small number tiles, two per row */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stat-grid .stat-value { font-size: 1.3rem; }
+
+/* One line per day of the week */
+.week-days { list-style: none; margin: 0 0 12px; padding: 0; }
+
+.week-days li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.week-days .day-what { color: var(--muted); text-align: right; }
+
+/* A label with its box underneath, outside forms */
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.sessions li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.sessions strong { color: var(--text); }
+
 /* ---------- Weight tab ---------- */
 .stat-row {
   display: grid;
@@ -573,4 +687,41 @@ h3 { font-size: 1rem; margin: 20px 0 8px; }
   background: var(--text);
   color: var(--bg);
   font-size: 0.95rem;
+  white-space: nowrap;      /* one tidy line */
+  z-index: 20;              /* above the bottom tabs and morning screens */
+}
+
+/* ---------- Phones: tabs at the bottom, where your thumb is ---------- */
+@media (max-width: 600px) {
+  nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    max-width: none;
+    margin: 0;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));   /* clear of the iPhone home bar */
+    gap: 4px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+  }
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 0;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    font-size: 0.75rem;
+  }
+
+  .tab.active { background: none; color: var(--accent); font-weight: 600; }
+  .tab-icon { display: block; font-size: 1.3rem; line-height: 1; }
+
+  main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+  #toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
 }

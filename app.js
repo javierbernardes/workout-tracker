@@ -381,6 +381,8 @@ tabs.forEach(function (tab) {
   tab.addEventListener("click", function () {
     // Which section does this tab point to? (from data-section="...")
     const target = tab.dataset.section;
+    if (editing) stopEditing(false);   // leaving a half-done edit cancels it
+    window.scrollTo(0, 0);             // each tab starts at the top
 
     // Un-highlight every tab and hide every section...
     tabs.forEach(function (t) { t.classList.remove("active"); });
@@ -391,7 +393,7 @@ tabs.forEach(function (tab) {
     document.getElementById(target).classList.add("active");
 
     if (target === "history") renderHistory();
-    if (target === "weight") renderWeight();
+    if (target === "weight") renderProgress();
   });
 });
 
@@ -420,10 +422,116 @@ document.querySelectorAll("#type-picker [data-form]").forEach(function (button) 
   button.addEventListener("click", function () { openForm(button.dataset.form); });
 });
 
-// Every "← Back" button returns to the type buttons
+// Every "← Back" button returns to the type buttons (or to History, when editing)
 document.querySelectorAll(".back").forEach(function (button) {
-  button.addEventListener("click", closeForms);
+  button.addEventListener("click", function () {
+    if (editing) stopEditing(true);
+    else closeForms();
+  });
 });
+
+
+// ---------- Editing an entry from History ----------
+// Tapping an entry in History opens the form it was logged with, filled in.
+// "editing" remembers which entry it is, so saving replaces it instead of adding a new one.
+
+let editing = null;
+
+const FORM_FOR = {
+  weights: "form-weights", cardio: "form-cardio", sports: "form-sports",
+  bodyweight: "form-bodyweight", workout: "form-finish", wake: "form-wake"
+};
+const EDIT_TITLES = {
+  weights: "Edit exercise", cardio: "Edit cardio", sports: "Edit sport",
+  bodyweight: "Edit body weight", workout: "Edit workout", wake: "Edit wake-up time"
+};
+
+function editEntry(e) {
+  if (!FORM_FOR[e.type]) return;
+  document.querySelector('.tab[data-section="log"]').click();   // the forms live on the Log tab
+  editing = e;
+  const form = document.getElementById(FORM_FOR[e.type]);
+  openForm(form.id);
+  fillForm(form, e);
+
+  // "Edit …" title and "Save changes" button (remembering the normal text)
+  const title = form.querySelector("h2");
+  const save = form.querySelector('button[type="submit"]');
+  title.dataset.normal = title.dataset.normal || title.textContent;
+  save.dataset.normal = save.dataset.normal || save.textContent;
+  title.textContent = "✏️ " + EDIT_TITLES[e.type];
+  save.textContent = "Save changes";
+  document.getElementById("discard-workout").hidden = true;
+  window.scrollTo(0, 0);
+}
+
+// Leave editing mode; backToHistory = show the History tab again
+function stopEditing(backToHistory) {
+  editing = null;
+  document.querySelectorAll("#log form h2[data-normal]").forEach(function (h) { h.textContent = h.dataset.normal; });
+  document.querySelectorAll('#log form button[type="submit"][data-normal]').forEach(function (b) {
+    b.textContent = b.dataset.normal;
+  });
+  document.getElementById("discard-workout").hidden = false;
+  closeForms();
+  if (backToHistory) document.querySelector('.tab[data-section="history"]').click();
+}
+
+// Save the edited version: same id, owner and creation time; everything else from the form
+function saveEdit(changes, message) {
+  const kept = { id: editing.id, user: editing.user, createdAt: editing.createdAt };
+  if (editing.workoutId) kept.workoutId = editing.workoutId;
+  recordChange({ op: "add", entry: Object.assign({ type: editing.type }, changes, kept) });
+  showToast(message || "Changes saved ✓");
+  stopEditing(true);
+}
+
+// Put an entry's values into its form
+function fillForm(form, e) {
+  const f = form.elements;
+  if (f.date && e.date) f.date.value = e.date;
+  if (f.time) f.time.value = entryTime(e);
+  if (f.notes) f.notes.value = e.notes || "";
+
+  if (e.type === "weights") {
+    f.exercise.value = e.exercise;
+    f.unit.value = e.unit;
+    setsBox.innerHTML = "";
+    e.sets.forEach(function (s) { addSetRow(s.reps, s.weight); });
+  }
+  if (e.type === "cardio") {
+    const known = Array.from(f.activity.options).some(function (o) { return o.value === e.activity; });
+    f.activity.value = known ? e.activity : "Other";
+    f.otherName.value = known ? "" : e.activity;
+    updateCardioFields();
+    f.minutes.value = e.minutes;
+    ["speed", "incline", "level", "floors"].forEach(function (name) {
+      f[name].value = e[name] !== undefined ? e[name] : "";
+    });
+    if (e.speedUnit) f.speedUnit.value = e.speedUnit;
+    f.rails.checked = !!e.rails;
+  }
+  if (e.type === "sports") {
+    f.sport.value = e.sport;
+    f.minutes.value = e.minutes;
+    updateGolfFields();
+    f.temperature.value = e.temperature !== undefined ? e.temperature : "";
+    if (e.tempUnit) f.tempUnit.value = e.tempUnit;
+    f.score.value = e.score !== undefined ? e.score : "";
+  }
+  if (e.type === "bodyweight") {
+    f.weight.value = e.weight;
+    f.unit.value = e.unit;
+    f.notMorning.checked = !e.morning;
+    f.peed.checked = !!e.peed;
+    f.pooped.checked = !!e.pooped;
+  }
+  if (e.type === "workout") {
+    f.minutes.value = e.minutes;
+    f.effort.value = e.effort || "easy";
+    document.getElementById("finish-hint").textContent = "";
+  }
+}
 
 // Empty a form and fill in sensible defaults (today, your usual units)
 function resetForm(form) {
@@ -439,17 +547,27 @@ function resetForm(form) {
     setsBox.innerHTML = "";
     addSetRow("", "");
     fillSuggestions("exercise-list", COMMON_EXERCISES, "weights", "exercise");
+    updateLastWeights();
   }
   if (form.id === "form-cardio") {
     f.speedUnit.value = getPref("speedUnit", "km/h");
+    // Start on the activity you did most recently
+    const lastCardio = lastEntry(function (e) { return e.type === "cardio"; });
+    if (lastCardio && !editing) {
+      const known = Array.from(f.activity.options).some(function (o) { return o.value === lastCardio.activity; });
+      f.activity.value = known ? lastCardio.activity : "Other";
+      if (!known) f.otherName.value = lastCardio.activity;
+    }
     updateCardioFields();
+    updateLastCardio();
   }
   if (form.id === "form-sports") {
     f.tempUnit.value = getPref("tempUnit", "°C");
     fillSuggestions("sport-list", COMMON_SPORTS, "sports", "sport");
     updateGolfFields();
+    updateLastSport();
   }
-  if (form.id === "form-finish") {
+  if (form.id === "form-finish" && !editing) {
     // Total minutes comes from the timer (at least 1); you can still change it
     const workout = getActiveWorkout();
     f.date.value = workout.date;
@@ -538,6 +656,17 @@ function renderCurrentWorkout() {
 document.getElementById("form-finish").addEventListener("submit", function (event) {
   event.preventDefault();
   const f = event.target.elements;
+
+  // Editing a saved workout: update it, and move its exercises if the date changed
+  if (editing) {
+    loadEntries().forEach(function (e) {
+      if (e.workoutId === editing.id && e.date !== f.date.value) updateEntry(e.id, { date: f.date.value });
+    });
+    saveEdit({ date: f.date.value, time: f.time.value, minutes: Number(f.minutes.value),
+               effort: f.effort.value, notes: f.notes.value.trim() });
+    return;
+  }
+
   const workout = getActiveWorkout();
   const items = currentWorkoutEntries();
   if (items.length === 0) {
@@ -648,6 +777,78 @@ document.getElementById("add-set").addEventListener("click", function () {
 
 
 // =====================================================
+//  6b. "SAME AS LAST TIME"
+//  When you pick something you've done before, show what you did last time
+//  with a button that fills the form in one tap.
+// =====================================================
+
+// Your most recent entry that matches
+function lastEntry(match) {
+  return loadEntries().filter(match).sort(function (a, b) {
+    return (b.date + entryTime(b) + b.createdAt).localeCompare(a.date + entryTime(a) + a.createdAt);
+  })[0];
+}
+
+// Show (or hide) the "Last time: … [Use these]" bar of a form
+function showLastTime(kind, entry, text, useIt) {
+  const box = document.querySelector('.last-time[data-for="' + kind + '"]');
+  box.hidden = !entry || !!editing;
+  if (box.hidden) return;
+  box.innerHTML = "";
+  const what = document.createElement("span");
+  what.textContent = "Last time (" + dayLabel(entry.date).replace(/, \d{4}$/, "") + "): " + text;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "use-button";
+  button.textContent = "Use these";
+  button.addEventListener("click", function () {
+    useIt();
+    showToast("Filled in from last time ✓");
+  });
+  box.append(what, button);
+}
+
+function updateLastWeights() {
+  const f = document.getElementById("form-weights").elements;
+  const name = f.exercise.value.trim().toLowerCase();
+  const last = name && lastEntry(function (e) {
+    return e.type === "weights" && e.exercise.trim().toLowerCase() === name;
+  });
+  showLastTime("weights", last, last ? last.sets.map(function (s) { return s.reps + "×" + s.weight; }).join(", ") +
+    " " + last.unit : "", function () {
+    f.unit.value = last.unit;
+    setsBox.innerHTML = "";
+    last.sets.forEach(function (s) { addSetRow(s.reps, s.weight); });
+  });
+}
+
+function updateLastCardio() {
+  const f = cardioForm.elements;
+  const activity = f.activity.value === "Other" ? f.otherName.value.trim() : f.activity.value;
+  const last = activity && lastEntry(function (e) { return e.type === "cardio" && e.activity === activity; });
+  showLastTime("cardio", last, last ? describe(last).replace(/^.*? — /, "") : "", function () {
+    f.minutes.value = last.minutes;
+    ["speed", "incline", "level", "floors"].forEach(function (name) {
+      f[name].value = last[name] !== undefined ? last[name] : "";
+    });
+    if (last.speedUnit) f.speedUnit.value = last.speedUnit;
+    f.rails.checked = !!last.rails;
+  });
+}
+
+function updateLastSport() {
+  const f = sportsForm.elements;
+  const sport = f.sport.value.trim().toLowerCase();
+  const last = sport && lastEntry(function (e) { return e.type === "sports" && e.sport.trim().toLowerCase() === sport; });
+  showLastTime("sports", last, last ? last.minutes + " min" : "", function () {
+    f.minutes.value = last.minutes;
+  });
+}
+
+document.getElementById("form-weights").elements.exercise.addEventListener("input", updateLastWeights);
+
+
+// =====================================================
 //  7. CARDIO and SPORTS: show only the fields that apply
 // =====================================================
 
@@ -660,6 +861,8 @@ function updateCardioFields() {
   });
 }
 cardioForm.elements.activity.addEventListener("change", updateCardioFields);
+cardioForm.elements.activity.addEventListener("change", updateLastCardio);
+cardioForm.elements.otherName.addEventListener("input", updateLastCardio);
 
 const sportsForm = document.getElementById("form-sports");
 
@@ -668,6 +871,7 @@ function updateGolfFields() {
   document.getElementById("golf-fields").hidden = sport !== "golf";
 }
 sportsForm.elements.sport.addEventListener("input", updateGolfFields);
+sportsForm.elements.sport.addEventListener("input", updateLastSport);
 
 
 // =====================================================
@@ -695,6 +899,11 @@ document.getElementById("form-weights").addEventListener("submit", function (eve
   }
 
   const exercise = f.exercise.value.trim();
+  if (editing) {
+    saveEdit({ date: editing.date, time: entryTime(editing), exercise: exercise, unit: f.unit.value,
+               sets: sets, notes: f.notes.value.trim() });
+    return;
+  }
   const workout = getActiveWorkout();
   addEntry({
     type: "weights",
@@ -726,12 +935,8 @@ cardioForm.addEventListener("submit", function (event) {
     }
   }
 
-  const workout = getActiveWorkout();
   const entry = {
     type: "cardio",
-    date: workout.date,
-    time: timeOf(),
-    workoutId: workout.id,
     activity: activity,
     minutes: Number(f.minutes.value),
     notes: f.notes.value.trim()
@@ -749,6 +954,15 @@ cardioForm.addEventListener("submit", function (event) {
   }
   if (isVisible(f.rails) && f.rails.checked) entry.rails = true;
 
+  if (editing) {
+    saveEdit(Object.assign(entry, { date: editing.date, time: entryTime(editing) }));
+    return;
+  }
+  // A new exercise belongs to the running workout
+  const workout = getActiveWorkout();
+  entry.date = workout.date;
+  entry.time = timeOf();
+  entry.workoutId = workout.id;
   addEntry(entry);
   showToast("Added " + activity + " ✓");
   closeForms();
@@ -777,6 +991,7 @@ sportsForm.addEventListener("submit", function (event) {
     entry.score = Number(f.score.value);
   }
 
+  if (editing) { saveEdit(entry); return; }
   addEntry(entry);
   showToast("Saved " + entry.sport + " ✓");
   closeForms();
@@ -786,7 +1001,7 @@ document.getElementById("form-bodyweight").addEventListener("submit", function (
   event.preventDefault();
   const f = event.target.elements;
 
-  addEntry({
+  const entry = {
     type: "bodyweight",
     date: f.date.value,
     time: f.time.value,
@@ -795,10 +1010,28 @@ document.getElementById("form-bodyweight").addEventListener("submit", function (
     morning: !f.notMorning.checked,
     peed: f.peed.checked,
     pooped: f.pooped.checked
-  });
+  };
   setPref("weightUnit", f.unit.value);
+  if (editing) { saveEdit(entry); return; }
+  addEntry(entry);
   showToast("Saved weight ✓");
   closeForms();
+});
+
+// Only used for editing a wake-up time from History
+document.getElementById("form-wake").addEventListener("submit", function (event) {
+  event.preventDefault();
+  const f = event.target.elements;
+  if (!editing) return;
+  // The id holds the date ("wake-2026-10-20"), so a new date means a new entry
+  if (f.date.value !== editing.date) {
+    deleteEntry(editing.id);
+    addEntry({ id: "wake-" + f.date.value, type: "wake", date: f.date.value, time: f.time.value });
+    showToast("Changes saved ✓");
+    stopEditing(true);
+    return;
+  }
+  saveEdit({ date: f.date.value, time: f.time.value });
 });
 
 
@@ -838,6 +1071,23 @@ function describe(e) {
   }
   if (e.type === "wake") return "Woke up";
   return "";
+}
+
+// A workout's weights totals: how many sets, and the volume (reps × weight, all added up)
+// in your usual unit, e.g. { sets: 9, volume: 4320, unit: "kg" }
+function workoutTotals(workoutId) {
+  const unit = getPref("weightUnit", "kg");
+  let sets = 0, volume = 0;
+  loadEntries().forEach(function (e) {
+    if (e.workoutId !== workoutId || e.type !== "weights") return;
+    e.sets.forEach(function (s) {
+      sets++;
+      let w = s.weight;
+      if (e.unit !== unit) w = unit === "kg" ? w / LB_PER_KG : w * LB_PER_KG;
+      volume += s.reps * w;
+    });
+  });
+  return { sets: sets, volume: Math.round(volume), unit: unit };
 }
 
 // " · after pee and poop", or "" if neither (or not recorded)
@@ -950,12 +1200,27 @@ function renderHistory() {
     if (e.type === "workout") {
       title.textContent += " · " + children.length + (children.length === 1 ? " exercise" : " exercises");
       if (e.effort) title.textContent += " · " + e.effort;
+      // Totals line: sets and volume lifted
+      const totals = workoutTotals(e.id);
+      if (totals.sets > 0) {
+        const totalsLine = document.createElement("div");
+        totalsLine.className = "hint small";
+        totalsLine.textContent = totals.sets + (totals.sets === 1 ? " set" : " sets") +
+          (totals.volume > 0 ? " · " + totals.volume.toLocaleString("en-US") + " " + totals.unit + " lifted" : "");
+        text.appendChild(totalsLine);
+      }
       const sub = document.createElement("ul");
       sub.className = "sub-list";
       children.sort(function (a, b) { return entryTime(a).localeCompare(entryTime(b)); });
       children.forEach(function (c) {
         const line = document.createElement("li");
         line.textContent = ICONS[c.type] + " " + describe(c) + " · " + formatTime(entryTime(c));
+        // Tapping one exercise edits just that exercise
+        line.className = "tappable";
+        line.addEventListener("click", function (event) {
+          event.stopPropagation();
+          editEntry(c);
+        });
         sub.appendChild(line);
       });
       text.appendChild(sub);
@@ -975,6 +1240,12 @@ function renderHistory() {
         deleteEntry(e.id);
         renderHistory();
       }
+    });
+
+    // Tapping the entry (anywhere but ×) opens it for editing
+    item.classList.add("tappable");
+    item.addEventListener("click", function (event) {
+      if (!event.target.closest(".delete")) editEntry(e);
     });
 
     item.append(text, remove);
@@ -1211,6 +1482,327 @@ function chartOptions(colors, unit) {
       }
     }
   };
+}
+
+
+// =====================================================
+//  9e. PROGRESS TAB: switching between Week / Weight / Strength
+// =====================================================
+
+let progressView = getPref("progressView", "view-week");
+if (!document.getElementById(progressView)) progressView = "view-week";
+
+document.querySelectorAll("#progress-views button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    progressView = button.dataset.view;
+    setPref("progressView", progressView);
+    renderProgress();
+  });
+});
+
+function renderProgress() {
+  document.querySelectorAll("#progress-views button").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.view === progressView);
+  });
+  document.querySelectorAll(".progress-view").forEach(function (v) { v.hidden = v.id !== progressView; });
+  if (progressView === "view-week") renderWeekSummary();
+  if (progressView === "view-weight") renderWeight();
+  if (progressView === "view-strength") renderStrength();
+}
+
+// Chart.js might not have loaded (no internet); then charts are skipped
+function chartColors() {
+  const css = getComputedStyle(document.documentElement);
+  return {
+    accent: css.getPropertyValue("--accent").trim(),
+    muted: css.getPropertyValue("--muted").trim(),
+    border: css.getPropertyValue("--border").trim(),
+    card: css.getPropertyValue("--card").trim()
+  };
+}
+
+// A weight in your usual unit
+function inUnit(weight, fromUnit, unit) {
+  if (fromUnit === unit) return weight;
+  return unit === "kg" ? weight / LB_PER_KG : weight * LB_PER_KG;
+}
+
+// A small number tile: label, big value, little note
+function statTile(label, value, note) {
+  const tile = document.createElement("div");
+  tile.className = "stat";
+  [["stat-label", label], ["stat-value", value], ["stat-note", note || ""]].forEach(function (part) {
+    const div = document.createElement("div");
+    div.className = part[0];
+    div.textContent = part[1];
+    tile.appendChild(div);
+  });
+  return tile;
+}
+
+
+// ---------- Strength: progress for one exercise ----------
+
+// Estimated one-rep max (Epley formula): what you could probably lift once
+function oneRepMax(reps, weight) {
+  return reps <= 1 ? weight : weight * (1 + reps / 30);
+}
+
+let strengthChart;
+
+document.getElementById("strength-exercise").addEventListener("change", function (event) {
+  setPref("strengthExercise", event.target.value);
+  renderStrength();
+});
+
+function renderStrength() {
+  const unit = getPref("weightUnit", "kg");
+  const logs = loadEntries().filter(function (e) { return e.type === "weights" && e.sets && e.sets.length; });
+  document.getElementById("strength-empty").hidden = logs.length > 0;
+  document.getElementById("strength-content").hidden = logs.length === 0;
+  if (logs.length === 0) return;
+
+  // The exercise list, most recently done first (names compared without caring about capitals)
+  const latest = {};
+  logs.forEach(function (e) {
+    const key = e.exercise.trim().toLowerCase();
+    const stamp = e.date + entryTime(e);
+    const name = e.exercise.trim().charAt(0).toUpperCase() + e.exercise.trim().slice(1);
+    if (!latest[key] || stamp > latest[key].stamp) latest[key] = { name: name, stamp: stamp };
+  });
+  const keys = Object.keys(latest).sort(function (a, b) { return latest[b].stamp.localeCompare(latest[a].stamp); });
+  const select = document.getElementById("strength-exercise");
+  select.innerHTML = "";
+  keys.forEach(function (key) {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = latest[key].name;
+    select.appendChild(option);
+  });
+  const chosen = keys.includes(getPref("strengthExercise", "")) ? getPref("strengthExercise", "") : keys[0];
+  select.value = chosen;
+
+  // One session per day: all the sets of that exercise that day
+  const byDay = {};
+  logs.filter(function (e) { return e.exercise.trim().toLowerCase() === chosen; }).forEach(function (e) {
+    byDay[e.date] = byDay[e.date] || [];
+    e.sets.forEach(function (s) {
+      byDay[e.date].push({ reps: s.reps, weight: round1(inUnit(s.weight, e.unit, unit)) });
+    });
+  });
+  const days = Object.keys(byDay).sort();
+  // Body-weight exercises (all weights 0): track the most reps instead
+  const repsOnly = days.every(function (d) { return byDay[d].every(function (s) { return !s.weight; }); });
+
+  const sessions = days.map(function (d) {
+    const sets = byDay[d];
+    const best = sets.reduce(function (top, s) {
+      const score = repsOnly ? s.reps : oneRepMax(s.reps, s.weight);
+      return score > top.score ? { score: score, set: s } : top;
+    }, { score: 0, set: sets[0] });
+    return { date: d, sets: sets, best: round1(best.score), bestSet: best.set };
+  });
+
+  // The number tiles
+  const stats = document.getElementById("strength-stats");
+  stats.innerHTML = "";
+  const top = sessions.reduce(function (a, b) { return b.best >= a.best ? b : a; });
+  const last = sessions[sessions.length - 1];
+  const before = sessions[sessions.length - 2];
+  const unitLabel = repsOnly ? " reps" : " " + unit;
+  stats.appendChild(statTile(repsOnly ? "Most reps" : "Best est. max", top.best + unitLabel, formatDate(top.date)));
+  if (before) {
+    const change = round1(last.best - before.best);
+    stats.appendChild(statTile("Last session", last.best + unitLabel,
+      (change > 0 ? "▲ " + change : change < 0 ? "▼ " + Math.abs(change) : "same as") + " vs the time before"));
+  } else {
+    stats.appendChild(statTile("Sessions", "1", "Log it again to see your progress"));
+  }
+
+  // The chart: best of each session over time
+  const box = document.getElementById("chart-strength");
+  if (strengthChart) strengthChart.destroy();
+  if (typeof Chart !== "undefined") {
+    const colors = chartColors();
+    strengthChart = new Chart(box, {
+      type: "line",
+      data: { datasets: [{
+        label: repsOnly ? "Most reps" : "Estimated max",
+        data: sessions.map(function (s) { return { x: new Date(s.date + "T00:00").getTime(), y: s.best, date: s.date }; }),
+        borderColor: colors.accent, backgroundColor: colors.accent, borderWidth: 2,
+        pointRadius: 4, pointHoverRadius: 6, tension: 0
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: function (items) { return formatDate(items[0].raw.date); },
+            label: function (item) { return item.dataset.label + ": " + item.raw.y + unitLabel; }
+          }}
+        },
+        scales: {
+          x: { type: "linear", grid: { display: false }, ticks: { color: colors.muted, maxTicksLimit: 5,
+               callback: function (v) { return new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" }); } } },
+          y: { grid: { color: colors.border }, ticks: { color: colors.muted, maxTicksLimit: 5 } }
+        }
+      }
+    });
+  }
+
+  // The sessions list, newest first
+  const list = document.getElementById("strength-sessions");
+  list.innerHTML = "";
+  sessions.slice().reverse().forEach(function (s) {
+    const item = document.createElement("li");
+    const day = document.createElement("strong");
+    day.textContent = formatDate(s.date);
+    item.appendChild(day);
+    item.appendChild(document.createTextNode(" · " + s.sets.map(function (set) {
+      return set.reps + "×" + set.weight;
+    }).join(", ") + (repsOnly ? "" : " " + unit + " · est. max " + s.best + " " + unit)));
+    list.appendChild(item);
+  });
+}
+
+
+// ---------- Week: the weekly summary ----------
+
+let weekOffset = 0;        // 0 = this week, -1 = last week, …
+let weekChart;
+
+document.getElementById("week-prev").addEventListener("click", function () { weekOffset--; renderWeekSummary(); });
+document.getElementById("week-next").addEventListener("click", function () {
+  if (weekOffset < 0) { weekOffset++; renderWeekSummary(); }
+});
+
+// "07:10" average of a list of times
+function averageTime(times) {
+  if (!times.length) return "";
+  const avg = Math.round(times.reduce(function (sum, t) { return sum + minutesOf(t); }, 0) / times.length);
+  return String(Math.floor(avg / 60)).padStart(2, "0") + ":" + String(avg % 60).padStart(2, "0");
+}
+
+function renderWeekSummary() {
+  const unit = getPref("weightUnit", "kg");
+  const monday = shiftDate(weekStart(today()), 7 * weekOffset);
+  const days = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return shiftDate(monday, i); });
+  const sunday = days[6];
+
+  document.getElementById("week-title").textContent = weekOffset === 0 ? "This week"
+    : weekOffset === -1 ? "Last week"
+    : new Date(monday + "T00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " – " +
+      new Date(sunday + "T00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  document.getElementById("week-next").disabled = weekOffset === 0;
+
+  const all = loadEntries();
+  const inWeek = all.filter(function (e) { return e.date >= monday && e.date <= sunday; });
+  const workouts = inWeek.filter(function (e) { return e.type === "workout"; });
+  const sports = inWeek.filter(function (e) { return e.type === "sports"; });
+  const loneCardio = inWeek.filter(function (e) { return e.type === "cardio" && !e.workoutId; });
+  const exerciseMinutes = workouts.concat(sports, loneCardio).reduce(function (sum, e) { return sum + e.minutes; }, 0);
+
+  let sets = 0, volume = 0;
+  workouts.forEach(function (w) {
+    const t = workoutTotals(w.id);
+    sets += t.sets;
+    volume += t.volume;
+  });
+
+  // Calories each day (today only up to now; future days have none yet)
+  const perDay = days.map(function (d) {
+    if (d > today()) return null;
+    return dayCalories(d, d === today() ? nowMinutes() : 1440);
+  });
+  const known = perDay.filter(Boolean);
+  const fullDays = perDay.filter(function (c, i) { return c && days[i] !== today(); });
+  const avgBurn = fullDays.length
+    ? fullDays.reduce(function (s, c) { return s + c.total; }, 0) / fullDays.length : null;
+  const exerciseKcal = known.reduce(function (s, c) { return s + c.exercise; }, 0);
+
+  // Morning weight: this week's average vs the week before
+  const morningAvg = function (from, to) {
+    const list = all.filter(function (e) { return e.type === "bodyweight" && e.morning && e.date >= from && e.date <= to; });
+    return list.length ? round1(list.reduce(function (s, e) { return s + inUnit(e.weight, e.unit, unit); }, 0) / list.length) : null;
+  };
+  const weightNow = morningAvg(monday, sunday);
+  const weightBefore = morningAvg(shiftDate(monday, -7), shiftDate(monday, -1));
+  const wakeTimes = inWeek.filter(function (e) { return e.type === "wake"; }).map(function (e) { return e.time; });
+
+  const stats = document.getElementById("week-stats");
+  stats.innerHTML = "";
+  stats.appendChild(statTile("Workouts", String(workouts.length),
+    sports.length ? "+ " + sports.length + (sports.length === 1 ? " sport session" : " sport sessions") : ""));
+  const hours = Math.floor(exerciseMinutes / 60), mins = exerciseMinutes % 60;
+  stats.appendChild(statTile("Exercise time",
+    hours ? hours + " h" + (mins ? " " + mins + " min" : "") : mins + " min"));
+  stats.appendChild(statTile("Avg burned / day", avgBurn ? "≈ " + kcalText(avgBurn) : "–",
+    avgBurn ? "kcal, " + fullDays.length + (fullDays.length === 1 ? " full day" : " full days") : "needs profile + weigh-in"));
+  stats.appendChild(statTile("From exercise", known.length ? "≈ " + kcalText(exerciseKcal) : "–", known.length ? "kcal this week" : ""));
+  stats.appendChild(statTile("Weights", sets ? sets + " sets" : "–",
+    volume ? volume.toLocaleString("en-US") + " " + unit + " lifted" : ""));
+  stats.appendChild(statTile("Morning weight", weightNow ? weightNow + " " + unit : "–",
+    weightNow && weightBefore ? (weightNow - weightBefore > 0 ? "+" : weightNow - weightBefore < 0 ? "−" : "") +
+      Math.abs(round1(weightNow - weightBefore)) + " " + unit + " vs week before" : "weekly average"));
+  if (wakeTimes.length) {
+    stats.appendChild(statTile("Avg wake-up", formatTime(averageTime(wakeTimes)),
+      wakeTimes.length + (wakeTimes.length === 1 ? " day logged" : " days logged")));
+  }
+
+  // Bar chart of calories per day
+  const box = document.getElementById("chart-week");
+  if (weekChart) weekChart.destroy();
+  box.closest(".chart-card").hidden = typeof Chart === "undefined" || !known.length;
+  if (typeof Chart !== "undefined" && known.length) {
+    const colors = chartColors();
+    weekChart = new Chart(box, {
+      type: "bar",
+      data: {
+        labels: days.map(function (d) { return new Date(d + "T00:00").toLocaleDateString("en-US", { weekday: "short" }); }),
+        datasets: [{
+          label: "kcal",
+          data: perDay.map(function (c) { return c ? Math.round(c.total) : null; }),
+          backgroundColor: days.map(function (d) { return d === today() ? colors.accent + "80" : colors.accent; }),
+          borderRadius: 4, maxBarThickness: 28
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: function (item) { return "≈ " + kcalText(item.raw) + " kcal" + (days[item.dataIndex] === today() ? " so far" : ""); }
+        }}},
+        scales: {
+          x: { grid: { display: false }, ticks: { color: colors.muted } },
+          y: { grid: { color: colors.border }, ticks: { color: colors.muted, maxTicksLimit: 4 } }
+        }
+      }
+    });
+  }
+
+  // One line per day: what you did
+  const list = document.getElementById("week-days");
+  list.innerHTML = "";
+  days.forEach(function (d, i) {
+    if (d > today()) return;
+    const bits = [];
+    inWeek.forEach(function (e) {
+      if (e.date !== d) return;
+      if (e.type === "workout") bits.push("💪 " + e.minutes + " min");
+      if (e.type === "sports") bits.push("🎾 " + e.sport);
+      if (e.type === "cardio" && !e.workoutId) bits.push("🏃 " + e.activity);
+      if (e.type === "bodyweight" && e.morning) bits.push("⚖️ " + e.weight + " " + e.unit);
+    });
+    if (perDay[i]) bits.push("🔥 " + kcalText(perDay[i].total));
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = d === today() ? "Today"
+      : new Date(d + "T00:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+    const what = document.createElement("span");
+    what.className = "day-what";
+    what.textContent = bits.length ? bits.join(" · ") : "–";
+    item.append(name, what);
+    list.appendChild(item);
+  });
 }
 
 
@@ -1756,7 +2348,7 @@ function refreshViews() {
   renderToday();
   showMorning();   // e.g. you already logged your wake-up on another device
   if (document.getElementById("history").classList.contains("active")) renderHistory();
-  if (document.getElementById("weight").classList.contains("active")) renderWeight();
+  if (document.getElementById("weight").classList.contains("active")) renderProgress();
   // Refill the profile form, unless you're in the middle of typing in it
   if (!profileForm.contains(document.activeElement)) renderProfile();
 }

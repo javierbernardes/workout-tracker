@@ -1,2 +1,7 @@
 research_notes/
 reports/
+# Personal health data: never upload
+whoop/
+my_whoop_data*/
+*.zip
+*.csv

@@ -99,12 +99,38 @@ Just for the user for now, but designed so others can use it later (every entry 
      5 min. Record in `supabase-reminder.sql` + `supabase/functions/morning-reminder/`.
      The user wanted lock-screen buttons like Spotify: impossible for web apps on iPhone
      (needs a native App Store app); tapping the reminder only opens the app.
-     Couldn't test push in the preview browser (service workers blocked there).
+     Couldn't test push in the preview browser (service workers blocked there), but on
+     2026-10-20 the user re-added the home-screen app on iPhone, turned it on and received
+     the test notification. Subscription: Apple push, 06:30 America/New_York.
 6. ✅ Live at https://javierbernardes.github.io/workout-tracker/ (GitHub Pages from `main`,
    root; repo made Public 2026-10-20). User signed in on phone + added to home screen: works.
    Pushing to `main` updates the site in ~1–2 min. No custom domain (user declined).
    Maybe later: a proper app icon / web manifest for the home screen.
-7. ⬜ Later: extras, design polish, other users, optional AI helper.
+7. 🟡 Extras (built 2026-10-20, user chose this order; AI helper postponed by the user):
+   - Edit entries: tap an entry (or an exercise inside a workout) in History → its form opens
+     filled in ("✏️ Edit …", "Save changes"); saving replaces the entry with the same id
+     (`editing` state + saveEdit in app.js part 4). Wake-up edits use the small form-wake.
+   - Workout totals: sets + volume (reps × weight, in the usual unit) on workout cards.
+   - "Weight" tab renamed "Progress" (section id still `weight`) with Week / Weight / Strength
+     views (part 9e). Strength: per exercise (case-insensitive), best set per day as Epley
+     estimated 1RM (weight × (1 + reps/30)); body-weight exercises (weight 0) track reps.
+     Week: Mon–Sun summary tiles, calories-per-day bar chart, one line per day, ‹ › weeks.
+   - Phone: bottom tab bar with icons under 600px, iPhone safe areas (viewport-fit=cover),
+     "Last time: … [Use these]" on weights/cardio/sports forms, cardio starts on the last
+     activity, tabs scroll to top.
+   - Offline: sw.js caches the app + Chart.js; network first with a 3 s timeout, then the
+     saved copy (bump CACHE name if the caching logic changes). Couldn't run service workers
+     in the preview browser; logic only syntax-checked.
+   - AI helper (later): turn a typed workout into entries via a Supabase Edge Function calling
+     the Claude API (separate pay-per-token account; key stored as a Supabase secret, never
+     in the site). User was told: claude.ai subscription can't be used; Haiku 5.5 ≈ $0.0003,
+     Sonnet 5.5 ≈ $0.006–0.015, Opus 5.5 ≈ $0.012–0.03 per request; user decides the model.
+   ⏳ WHOOP calibration: user has an OLD WHOOP history (no longer wears it). Export requested
+   2026-10-20 (up to 24 h). When the ZIP is in `whoop/` (git-ignored, with *.zip and *.csv):
+   compare WHOOP daily kcal with our formula for those days (ask the user's weight back then
+   and whether height changed) → personal resting-burn correction (and per-sport/gym METs if
+   enough sessions). Analyse locally only (health data, public repo); show results in plain
+   English before changing the app.
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.
