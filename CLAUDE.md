@@ -70,6 +70,8 @@ Just for the user for now, but designed so others can use it later (every entry 
    (1M/3M/1Y/All), a highlighted "Morning weight" chart (dots + weekly average line) and a
    muted "All weigh-ins" reference chart (Chart.js 4.4.1 from cdnjs), weekly table.
    Body weight form also asks "Before weighing, did you… Pee / Poop" (`peed`, `pooped`).
+   These are notes, not corrections: each weekly average shows a summary like
+   "3 after pee · 1 after pee & poop · 2 with neither · 1 not noted" (toiletSummary).
    Every entry has a `time` ("HH:MM"): editable Time box next to Date (defaults to now; a
    workout's defaults to its start); weights/cardio get the time they were added. Old entries
    fall back to `createdAt`.
@@ -121,6 +123,13 @@ Just for the user for now, but designed so others can use it later (every entry 
    - Offline: sw.js caches the app + Chart.js; network first with a 3 s timeout, then the
      saved copy (bump CACHE name if the caching logic changes). Couldn't run service workers
      in the preview browser; logic only syntax-checked.
+   - Food log (later, user wants it but "not yet"): entries `type: "food"` (name, kcal,
+     optional protein/carbs/fat, time), "Last time" for frequent foods, Today box shows
+     eaten vs burned. After 2–3 weeks with morning weigh-ins: estimate real maintenance
+     (intake vs weekly weight trend) and replace the everyday calibration with it.
+     User asked whether 2,000 kcal/day is right: explained it's ~1.12 × resting (Mifflin
+     1,779), likely a conservative floor; real rest-day burn probably ~2,200–2,500.
+     Could pair with the AI helper (describe a meal → calorie estimate).
    - AI helper (later): turn a typed workout into entries via a Supabase Edge Function calling
      the Claude API (separate pay-per-token account; key stored as a Supabase secret, never
      in the site). User was told: claude.ai subscription can't be used; Haiku 5.5 ≈ $0.0003,

@@ -1301,13 +1301,30 @@ function weeklyAverages(weighIns, unit) {
   weighIns.forEach(function (e) {
     const week = weekStart(e.date);
     weeks[week] = weeks[week] || [];
-    weeks[week].push(weightIn(e, unit));
+    weeks[week].push(e);
   });
   return Object.keys(weeks).sort().map(function (week) {
     const list = weeks[week];
-    const total = list.reduce(function (sum, w) { return sum + w; }, 0);
-    return { week: week, average: round1(total / list.length), count: list.length };
+    const total = list.reduce(function (sum, e) { return sum + weightIn(e, unit); }, 0);
+    return { week: week, average: round1(total / list.length), count: list.length, weighIns: list };
   });
+}
+
+// A note about the toilet before weigh-ins, e.g. "3 after pee · 1 after pee & poop · 3 with neither"
+// (weigh-ins from before these questions existed are counted as "not noted")
+function toiletSummary(weighIns) {
+  const counts = { pee: 0, both: 0, poop: 0, neither: 0, unknown: 0 };
+  weighIns.forEach(function (e) {
+    if (e.peed === undefined && e.pooped === undefined) counts.unknown++;
+    else if (e.peed && e.pooped) counts.both++;
+    else if (e.peed) counts.pee++;
+    else if (e.pooped) counts.poop++;
+    else counts.neither++;
+  });
+  return [
+    [counts.pee, "after pee"], [counts.both, "after pee & poop"], [counts.poop, "after poop"],
+    [counts.neither, "with neither"], [counts.unknown, "not noted"]
+  ].filter(function (c) { return c[0] > 0; }).map(function (c) { return c[0] + " " + c[1]; }).join(" · ");
 }
 
 // The range buttons above the charts
@@ -1340,7 +1357,8 @@ function renderWeight() {
 
   document.getElementById("stat-week").textContent = thisWeek ? thisWeek.average + " " + unit : "–";
   document.getElementById("stat-week-note").textContent = thisWeek
-    ? thisWeek.count + (thisWeek.count === 1 ? " morning weigh-in" : " morning weigh-ins")
+    ? thisWeek.count + (thisWeek.count === 1 ? " morning weigh-in" : " morning weigh-ins") +
+      ": " + toiletSummary(thisWeek.weighIns)
     : "No morning weigh-ins yet";
 
   if (thisWeek && lastWeek) {
@@ -1372,6 +1390,15 @@ function renderWeight() {
       row.appendChild(cell);
     });
     tbody.appendChild(row);
+
+    // A small notes line under each week: how the weigh-ins were done
+    const notes = document.createElement("tr");
+    notes.className = "week-notes";
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.textContent = toiletSummary(w.weighIns);
+    notes.appendChild(cell);
+    tbody.appendChild(notes);
   });
 
   drawWeightCharts(shown, shownWeeks, unit);
@@ -1721,8 +1748,11 @@ function renderWeekSummary() {
   const exerciseKcal = known.reduce(function (s, c) { return s + c.exercise; }, 0);
 
   // Morning weight: this week's average vs the week before
+  const morningIn = function (from, to) {
+    return all.filter(function (e) { return e.type === "bodyweight" && e.morning && e.date >= from && e.date <= to; });
+  };
   const morningAvg = function (from, to) {
-    const list = all.filter(function (e) { return e.type === "bodyweight" && e.morning && e.date >= from && e.date <= to; });
+    const list = morningIn(from, to);
     return list.length ? round1(list.reduce(function (s, e) { return s + inUnit(e.weight, e.unit, unit); }, 0) / list.length) : null;
   };
   const weightNow = morningAvg(monday, sunday);
@@ -1741,9 +1771,17 @@ function renderWeekSummary() {
   stats.appendChild(statTile("From exercise", known.length ? "≈ " + kcalText(exerciseKcal) : "–", known.length ? "kcal this week" : ""));
   stats.appendChild(statTile("Weights", sets ? sets + " sets" : "–",
     volume ? volume.toLocaleString("en-US") + " " + unit + " lifted" : ""));
-  stats.appendChild(statTile("Morning weight", weightNow ? weightNow + " " + unit : "–",
+  const weightTile = statTile("Morning weight", weightNow ? weightNow + " " + unit : "–",
     weightNow && weightBefore ? (weightNow - weightBefore > 0 ? "+" : weightNow - weightBefore < 0 ? "−" : "") +
-      Math.abs(round1(weightNow - weightBefore)) + " " + unit + " vs week before" : "weekly average"));
+      Math.abs(round1(weightNow - weightBefore)) + " " + unit + " vs week before" : "weekly average");
+  if (weightNow) {
+    // How the weigh-ins were done (pee / poop notes)
+    const toilet = document.createElement("div");
+    toilet.className = "stat-note";
+    toilet.textContent = toiletSummary(morningIn(monday, sunday));
+    weightTile.appendChild(toilet);
+  }
+  stats.appendChild(weightTile);
   if (wakeTimes.length) {
     stats.appendChild(statTile("Avg wake-up", formatTime(averageTime(wakeTimes)),
       wakeTimes.length + (wakeTimes.length === 1 ? " day logged" : " days logged")));
