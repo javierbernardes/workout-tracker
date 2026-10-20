@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Basic settings: text encoding, and "fit the screen" on phones -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workout Tracker</title>
+  <!-- Load the design (colors, spacing, fonts) from style.css -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Workout Tracker</h1>
+  </header>
+
+  <!-- The four main sections. Each "tab" button shows one section. -->
+  <nav>
+    <button class="tab active" data-section="log">Log</button>
+    <button class="tab" data-section="history">History</button>
+    <button class="tab" data-section="weight">Weight</button>
+    <button class="tab" data-section="profile">Profile</button>
+  </nav>
+
+  <main>
+    <!-- ============ LOG: where you record a new workout ============ -->
+    <section id="log" class="section active">
+
+      <!-- First you pick the type; data-form says which form it opens -->
+      <div id="type-picker">
+        <h2>Log a workout</h2>
+
+        <!-- Shown when no workout is running -->
+        <div id="no-workout" class="log-form">
+          <button type="button" id="start-workout" class="save">▶ Start a workout</button>
+          <p class="hint small">For weights and cardio: add your exercises one by one, then finish the workout.</p>
+        </div>
+
+        <!-- Shown while a workout is running (filled in by app.js) -->
+        <div id="current-workout" class="workout-box" hidden>
+          <div class="workout-title">💪 Workout in progress</div>
+          <ul id="workout-items"></ul>
+          <div class="type-grid">
+            <button class="type-btn" data-form="form-weights">🏋️ Add weights</button>
+            <button class="type-btn" data-form="form-cardio">🏃 Add cardio</button>
+          </div>
+          <button type="button" class="save" data-form="form-finish">Finish workout</button>
+        </div>
+
+        <p class="hint">Or log something else:</p>
+        <div class="type-grid">
+          <button class="type-btn" data-form="form-sports">🎾 Sports</button>
+          <button class="type-btn" data-form="form-bodyweight">⚖️ Body weight</button>
+        </div>
+      </div>
+
+      <!-- ---------- FINISH WORKOUT form ---------- -->
+      <form id="form-finish" class="log-form" hidden>
+        <button type="button" class="back">← Back</button>
+        <h2>✅ Finish workout</h2>
+
+        <label>Date
+          <input type="date" name="date" required>
+        </label>
+
+        <label>Total time (minutes)
+          <input type="number" name="minutes" min="1" step="1" inputmode="numeric" required>
+        </label>
+        <p class="hint small">The whole session including rests. Used later to estimate calories.</p>
+
+        <label>Notes (optional)
+          <input name="notes" placeholder="e.g. push day">
+        </label>
+
+        <button type="submit" class="save">Save workout</button>
+        <button type="button" id="discard-workout" class="danger-link">Discard this workout</button>
+      </form>
+
+      <!-- ---------- WEIGHTS form ---------- -->
+      <form id="form-weights" class="log-form" hidden>
+        <button type="button" class="back">← Back</button>
+        <h2>🏋️ Weights</h2>
+
+        <!-- "list" connects this box to the suggestions below -->
+        <label>Exercise
+          <input name="exercise" list="exercise-list" placeholder="Start typing, e.g. Bench press" autocomplete="off" required>
+        </label>
+        <datalist id="exercise-list"></datalist>
+
+        <label>Unit
+          <select name="unit">
+            <option value="kg">kg</option>
+            <option value="lb">lb</option>
+          </select>
+        </label>
+
+        <!-- One row per set. The rows are created by app.js -->
+        <div class="sets-header"><span>Set</span><span>Reps</span><span>Weight</span><span></span></div>
+        <div id="sets"></div>
+        <button type="button" id="add-set" class="secondary">+ Add set</button>
+
+        <label>Notes (optional)
+          <input name="notes" placeholder="e.g. felt strong">
+        </label>
+
+        <button type="submit" class="save">Add to workout</button>
+      </form>
+
+      <!-- ---------- CARDIO form ---------- -->
+      <form id="form-cardio" class="log-form" hidden>
+        <button type="button" class="back">← Back</button>
+        <h2>🏃 Cardio</h2>
+
+        <label>Activity
+          <select name="activity">
+            <option>Incline walking</option>
+            <option>Walking</option>
+            <option>Running</option>
+            <option>Stairmaster</option>
+            <option>Other</option>
+          </select>
+        </label>
+
+        <!-- data-show = which activities need this field (app.js hides the rest) -->
+        <label data-show="Other">What did you do?
+          <input name="otherName" placeholder="e.g. Cycling">
+        </label>
+
+        <label>Time (minutes)
+          <input type="number" name="minutes" min="1" step="1" inputmode="numeric" required>
+        </label>
+
+        <div class="row" data-show="Incline walking,Walking,Running">
+          <label>Speed
+            <input type="number" name="speed" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>Unit
+            <select name="speedUnit">
+              <option>km/h</option>
+              <option>mph</option>
+            </select>
+          </label>
+        </div>
+
+        <label data-show="Incline walking,Running">Incline (%)
+          <input type="number" name="incline" min="0" max="30" step="0.5" inputmode="decimal">
+        </label>
+
+        <label data-show="Stairmaster">Level
+          <input type="number" name="level" min="1" step="1" inputmode="numeric">
+        </label>
+
+        <label data-show="Stairmaster">Floors climbed (optional)
+          <input type="number" name="floors" min="0" step="1" inputmode="numeric">
+        </label>
+
+        <label>Notes (optional)
+          <input name="notes">
+        </label>
+
+        <button type="submit" class="save">Add to workout</button>
+      </form>
+
+      <!-- ---------- SPORTS form ---------- -->
+      <form id="form-sports" class="log-form" hidden>
+        <button type="button" class="back">← Back</button>
+        <h2>🎾 Sports</h2>
+
+        <label>Date
+          <input type="date" name="date" required>
+        </label>
+
+        <label>Sport
+          <input name="sport" list="sport-list" placeholder="e.g. Padel" autocomplete="off" required>
+        </label>
+        <datalist id="sport-list"></datalist>
+
+        <label>Time played (minutes)
+          <input type="number" name="minutes" min="1" step="1" inputmode="numeric" required>
+        </label>
+
+        <!-- Only shown when the sport is Golf -->
+        <div id="golf-fields" class="log-form" hidden>
+          <div class="row">
+            <label>Temperature (optional)
+              <input type="number" name="temperature" step="1" inputmode="numeric">
+            </label>
+            <label>Unit
+              <select name="tempUnit">
+                <option>°C</option>
+                <option>°F</option>
+              </select>
+            </label>
+          </div>
+          <label>Score (optional)
+            <input type="number" name="score" step="1" inputmode="numeric">
+          </label>
+        </div>
+
+        <label>Notes (optional)
+          <input name="notes" placeholder="e.g. won 6-4 6-3">
+        </label>
+
+        <button type="submit" class="save">Save sport</button>
+      </form>
+
+      <!-- ---------- BODY WEIGHT form ---------- -->
+      <form id="form-bodyweight" class="log-form" hidden>
+        <button type="button" class="back">← Back</button>
+        <h2>⚖️ Body weight</h2>
+
+        <label>Date
+          <input type="date" name="date" required>
+        </label>
+
+        <div class="row">
+          <label>Weight
+            <input type="number" name="weight" min="20" max="700" step="0.1" inputmode="decimal" required>
+          </label>
+          <label>Unit
+            <select name="unit">
+              <option value="kg">kg</option>
+              <option value="lb">lb</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" name="notMorning"> Not a morning weigh-in
+        </label>
+
+        <button type="submit" class="save">Save weight</button>
+      </form>
+    </section>
+
+    <!-- ============ HISTORY: list of past workouts ============ -->
+    <section id="history" class="section">
+      <h2>History</h2>
+      <p class="hint">Saved in this browser for now. Google Sheets comes in step 3.</p>
+      <ul id="history-list"></ul>
+    </section>
+
+    <!-- ============ WEIGHT: weekly average and chart ============ -->
+    <section id="weight" class="section">
+      <h2>Body weight</h2>
+      <p class="hint">Your weekly average and chart will appear here.</p>
+    </section>
+
+    <!-- ============ PROFILE: height, age, sex (for calorie estimates) ============ -->
+    <section id="profile" class="section">
+      <h2>Profile</h2>
+      <p class="hint">Your height, age and sex will go here.</p>
+    </section>
+  </main>
+
+  <!-- Small "Saved ✓" message that pops up at the bottom -->
+  <div id="toast" hidden></div>
+
+  <!-- Load the behavior (what happens when you click) from app.js -->
+  <script src="app.js"></script>
+</body>
+</html>

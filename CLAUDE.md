@@ -1,0 +1,49 @@
+# Workout Tracker — project notes
+
+## About the user
+- Beginner at programming. Explain every part in plain English as we build it.
+- Ask questions one or two at a time before big decisions.
+- Keep it simple: no installs if possible (no Node, no build tools, no frameworks).
+
+## What we're building
+A minimal, clean personal workout tracker website, in English, usable on phone and computers.
+Just for the user for now, but designed so others can use it later (every entry has `user: "me"`).
+
+### Log types
+- **Workout:** weights and cardio are logged inside a workout: Start → add exercises → Finish
+  (date + total minutes, used for calories). Each exercise has `workoutId` = the workout entry's id.
+  The running workout lives in localStorage `active-workout` (per device, not synced).
+  Sports and body weight are logged on their own.
+- **Weights:** exercise (suggestions list + remembers custom names), sets with reps + weight, kg or lb.
+- **Cardio:** activity = Incline walking (incline %, speed, time), Walking (speed, time),
+  Running (speed, time, optional incline), Stairmaster (level, time, optional floors), Other (name + time).
+- **Sports:** any sport + time played. Golf also has optional temperature (°C/°F) and score.
+- **Body weight:** kg or lb, assumed morning unless "Not a morning weigh-in" is ticked.
+  Wants a weekly average and a chart of how weight fluctuates.
+- **Calories:** conservative estimates for cardio and sports (MET-based), using weight + profile
+  (height, age, sex).
+- Exercise input: predefined list + own entries for now. An AI "describe your workout" helper
+  is a possible later add-on (would run via the Google Apps Script, costs money per use).
+
+### Tech decisions
+- Plain HTML/CSS/JS: `index.html`, `style.css`, `app.js`.
+- Data: Google Sheets via a Google Apps Script web app (user chose this, "option A").
+- Hosting: GitHub Pages (public repo, so no secrets in code; a simple password is typed once
+  per device and stored in the browser to stop strangers writing to the sheet).
+- Possible later move to Supabase if other users join.
+- Storage code is isolated in part 1 of `app.js` so it can be swapped from localStorage to Sheets.
+
+## Plan and progress
+1. ✅ Basic page: header, 4 tabs (Log, History, Weight, Profile), light/dark mode.
+2. ✅ Forms for all four types, saving to localStorage; simple History list with delete.
+   Then: weights/cardio grouped into workouts (start/finish, total minutes); golf temp optional.
+   User tested it 2026-10-20: all fine.
+   Testing: no Node/Python on this PC; the preview pane blocks localStorage on file:// pages,
+   so test via a throwaway PowerShell HttpListener server on localhost.
+3. ⬜ Connect Google Sheets (Apps Script the user pastes in the browser).
+4. ⬜ History polish + body weight weekly average + chart (Chart.js from a CDN).
+5. ⬜ Profile + calorie estimates.
+6. ⬜ Publish on GitHub Pages; add to phone home screen.
+7. ⬜ Later: extras, design polish, other users, optional AI helper.
+
+No Git commits made yet (user hasn't asked).
