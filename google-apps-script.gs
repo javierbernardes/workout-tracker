@@ -19,24 +19,24 @@ const PASSWORD = "CHANGE-ME";
 
 const TABS = {
   workout: { name: "Workouts", columns: [
-    ["date", "Date"], ["minutes", "Total minutes"], ["notes", "Notes"]
+    ["date", "Date"], ["time", "Time"], ["minutes", "Total minutes"], ["notes", "Notes"]
   ]},
   weights: { name: "Weights", columns: [
-    ["date", "Date"], ["exercise", "Exercise"], ["sets", "Sets (reps × weight)"],
+    ["date", "Date"], ["time", "Time"], ["exercise", "Exercise"], ["sets", "Sets (reps × weight)"],
     ["unit", "Unit"], ["notes", "Notes"]
   ]},
   cardio: { name: "Cardio", columns: [
-    ["date", "Date"], ["activity", "Activity"], ["minutes", "Minutes"],
+    ["date", "Date"], ["time", "Time"], ["activity", "Activity"], ["minutes", "Minutes"],
     ["speed", "Speed"], ["speedUnit", "Speed unit"], ["incline", "Incline %"],
     ["level", "Level"], ["floors", "Floors"], ["notes", "Notes"]
   ]},
   sports: { name: "Sports", columns: [
-    ["date", "Date"], ["sport", "Sport"], ["minutes", "Minutes"],
+    ["date", "Date"], ["time", "Time"], ["sport", "Sport"], ["minutes", "Minutes"],
     ["temperature", "Temperature"], ["tempUnit", "Temp unit"], ["score", "Score"],
     ["notes", "Notes"]
   ]},
   bodyweight: { name: "Body weight", columns: [
-    ["date", "Date"], ["weight", "Weight"], ["unit", "Unit"], ["morning", "Morning weigh-in"],
+    ["date", "Date"], ["time", "Time"], ["weight", "Weight"], ["unit", "Unit"], ["morning", "Morning weigh-in"],
     ["peed", "Peed before"], ["pooped", "Pooped before"]
   ]}
 };
@@ -193,8 +193,9 @@ function toCell(field, value) {
 
 // What's in the cell -> app value
 function fromCell(field, value) {
-  if (value instanceof Date) {   // in case a date was typed into the sheet by hand
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  if (value instanceof Date) {   // in case a date or time was typed into the sheet by hand
+    const pattern = field === "time" ? "HH:mm" : "yyyy-MM-dd";
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), pattern);
   }
   if (field === "sets") {
     return String(value).split(",").map(function (part) {

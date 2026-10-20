@@ -239,6 +239,16 @@ input:focus, select:focus {
   background: var(--card);
 }
 
+/* "Today", "Yesterday", "Mon, Oct 19" above each day's entries */
+.day-heading {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.day-heading:first-child { margin-top: 0; }
+
 .small {
   margin-top: 2px;
   font-size: 0.85rem;
@@ -268,7 +278,16 @@ input:focus, select:focus {
   background: var(--card);
 }
 
-.workout-title { font-weight: 600; }
+.workout-title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+#workout-timer {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;   /* digits all the same width, so it doesn't jiggle */
+}
 
 #workout-items {
   margin: 0;

@@ -208,6 +208,23 @@ function today() {
   return d.toISOString().slice(0, 10);
 }
 
+// A moment (now, by default) as "07:32", in your local time
+function timeOf(moment) {
+  const d = moment ? new Date(moment) : new Date();
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
+// An entry's time. Entries from before times existed use when they were saved.
+function entryTime(e) {
+  return e.time || (e.createdAt ? timeOf(e.createdAt) : "");
+}
+
+// "07:32" -> "7:32 AM" or "07:32", following your device's clock setting
+function formatTime(timeText) {
+  if (!timeText) return "";
+  return new Date("2000-01-01T" + timeText).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 // "2026-10-20" -> "Tue, Oct 20, 2026"
 function formatDate(dateText) {
   return new Date(dateText + "T00:00").toLocaleDateString("en-US", {
@@ -292,6 +309,7 @@ function resetForm(form) {
   form.reset();
   const f = form.elements;
   if (f.date) f.date.value = today();     // weights and cardio use the workout's date instead
+  if (f.time) f.time.value = timeOf();    // now; change it if you're logging later
 
   if (form.id === "form-weights" || form.id === "form-bodyweight") {
     f.unit.value = getPref("weightUnit", "kg");
@@ -311,11 +329,17 @@ function resetForm(form) {
     updateGolfFields();
   }
   if (form.id === "form-finish") {
-    // Suggest the time since you pressed Start, if it looks like a real session
+    // Total minutes comes from the timer (at least 1); you can still change it
     const workout = getActiveWorkout();
     f.date.value = workout.date;
-    const minutes = Math.round((Date.now() - workout.startedAt) / 60000);
-    if (minutes >= 5 && minutes <= 300) f.minutes.value = minutes;
+    f.time.value = timeOf(workout.startedAt);   // a workout's time is when you started it
+    const minutes = Math.max(1, Math.round((Date.now() - workout.startedAt) / 60000));
+    f.minutes.value = minutes;
+
+    // Over 4 hours probably means you forgot to press Finish last time
+    document.getElementById("finish-hint").textContent = minutes > 240
+      ? "⚠ The timer ran for over 4 hours. Did you forget to finish? Put in the real length."
+      : "Filled in from the timer. Change it if you finished earlier.";
   }
 }
 
@@ -331,6 +355,22 @@ document.getElementById("start-workout").addEventListener("click", function () {
   renderCurrentWorkout();
 });
 
+// ---------- The workout timer ----------
+// It doesn't count by itself: every second it works out "now minus the time you
+// pressed Start". So it stays right even if you close the page or lock your phone.
+
+function updateWorkoutTimer() {
+  const workout = getActiveWorkout();
+  if (!workout) return;
+  const seconds = Math.floor((Date.now() - workout.startedAt) / 1000);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor(seconds / 60) % 60;
+  const s = seconds % 60;
+  document.getElementById("workout-timer").textContent =
+    "⏱ " + h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+}
+setInterval(updateWorkoutTimer, 1000);
+
 // The exercises already added to the running workout
 function currentWorkoutEntries() {
   const workout = getActiveWorkout();
@@ -344,6 +384,7 @@ function renderCurrentWorkout() {
   document.getElementById("no-workout").hidden = !!workout;
   document.getElementById("current-workout").hidden = !workout;
   if (!workout) return;
+  updateWorkoutTimer();   // show the right time straight away, not after a second
 
   const list = document.getElementById("workout-items");
   list.innerHTML = "";
@@ -392,6 +433,7 @@ document.getElementById("form-finish").addEventListener("submit", function (even
     id: workout.id,
     type: "workout",
     date: f.date.value,
+    time: f.time.value,
     minutes: Number(f.minutes.value),
     notes: f.notes.value.trim()
   });
@@ -535,6 +577,7 @@ document.getElementById("form-weights").addEventListener("submit", function (eve
   addEntry({
     type: "weights",
     date: workout.date,
+    time: timeOf(),
     workoutId: workout.id,
     exercise: exercise,
     unit: f.unit.value,
@@ -565,6 +608,7 @@ cardioForm.addEventListener("submit", function (event) {
   const entry = {
     type: "cardio",
     date: workout.date,
+    time: timeOf(),
     workoutId: workout.id,
     activity: activity,
     minutes: Number(f.minutes.value),
@@ -594,6 +638,7 @@ sportsForm.addEventListener("submit", function (event) {
   const entry = {
     type: "sports",
     date: f.date.value,
+    time: f.time.value,
     sport: f.sport.value.trim(),
     minutes: Number(f.minutes.value),
     notes: f.notes.value.trim()
@@ -621,6 +666,7 @@ document.getElementById("form-bodyweight").addEventListener("submit", function (
   addEntry({
     type: "bodyweight",
     date: f.date.value,
+    time: f.time.value,
     weight: Number(f.weight.value),
     unit: f.unit.value,
     morning: !f.notMorning.checked,
@@ -677,6 +723,28 @@ function toiletNote(e, before) {
   return done.length ? before + "after " + done.join(" and ") : "";
 }
 
+// The History filter: which entry types belong to each button
+// (weights/cardio from before workouts existed count as "Workouts")
+const FILTER_GROUP = { workout: "workout", weights: "workout", cardio: "workout",
+                       sports: "sports", bodyweight: "bodyweight" };
+let historyFilter = getPref("historyFilter", "all");
+if (!["all", "workout", "sports", "bodyweight"].includes(historyFilter)) historyFilter = "all";
+
+document.querySelectorAll("#history-filter button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    historyFilter = button.dataset.filter;
+    setPref("historyFilter", historyFilter);
+    renderHistory();
+  });
+});
+
+// "Today", "Yesterday", or "Mon, Oct 19, 2026"
+function dayLabel(dateText) {
+  if (dateText === today()) return "Today";
+  if (dateText === shiftDate(today(), -1)) return "Yesterday";
+  return formatDate(dateText);
+}
+
 function renderHistory() {
   const list = document.getElementById("history-list");
   list.innerHTML = "";
@@ -693,22 +761,39 @@ function renderHistory() {
     return all.filter(function (e) { return e.workoutId === workoutId; });
   }
 
-  // Newest first
+  // Highlight the chosen filter button
+  document.querySelectorAll("#history-filter button").forEach(function (button) {
+    button.classList.toggle("active", button.dataset.filter === historyFilter);
+  });
+
+  // Newest first, only the kind chosen in the filter
   const entries = all.filter(function (e) {
     return !e.workoutId || !workoutIds.includes(e.workoutId);
+  }).filter(function (e) {
+    return historyFilter === "all" || FILTER_GROUP[e.type] === historyFilter;
   }).sort(function (a, b) {
-    return (b.date + b.createdAt).localeCompare(a.date + a.createdAt);
+    return (b.date + entryTime(b) + b.createdAt).localeCompare(a.date + entryTime(a) + a.createdAt);
   });
 
   if (entries.length === 0) {
     const empty = document.createElement("li");
     empty.className = "hint";
-    empty.textContent = "Nothing logged yet.";
+    empty.textContent = historyFilter === "all" ? "Nothing logged yet." : "Nothing of this kind yet.";
     list.appendChild(empty);
     return;
   }
 
+  let previousDate = "";
   entries.forEach(function (e) {
+    // A heading each time a new day starts
+    if (e.date !== previousDate) {
+      const heading = document.createElement("li");
+      heading.className = "day-heading";
+      heading.textContent = dayLabel(e.date);
+      list.appendChild(heading);
+      previousDate = e.date;
+    }
+
     const item = document.createElement("li");
     item.className = "entry";
 
@@ -717,7 +802,7 @@ function renderHistory() {
     title.textContent = ICONS[e.type] + " " + describe(e);
     const details = document.createElement("div");
     details.className = "hint small";
-    details.textContent = formatDate(e.date) + (e.notes ? " · " + e.notes : "");
+    details.textContent = formatTime(entryTime(e)) + (e.notes ? " · " + e.notes : "");
     text.append(title, details);
 
     // A workout lists its exercises underneath
@@ -726,9 +811,10 @@ function renderHistory() {
       title.textContent += " · " + children.length + (children.length === 1 ? " exercise" : " exercises");
       const sub = document.createElement("ul");
       sub.className = "sub-list";
+      children.sort(function (a, b) { return entryTime(a).localeCompare(entryTime(b)); });
       children.forEach(function (c) {
         const line = document.createElement("li");
-        line.textContent = ICONS[c.type] + " " + describe(c);
+        line.textContent = ICONS[c.type] + " " + describe(c) + " · " + formatTime(entryTime(c));
         sub.appendChild(line);
       });
       text.appendChild(sub);
@@ -762,6 +848,8 @@ function renderHistory() {
 
 const LB_PER_KG = 2.20462;
 let weightRangeDays = getPref("weightRange", "91");   // how far back to show; "" = all
+if (weightRangeDays === "all") weightRangeDays = "";
+if (!["30", "91", "365", ""].includes(weightRangeDays)) weightRangeDays = "91";
 let morningChart, allChart;                            // the two charts, once drawn
 
 // A Date -> "2026-10-20" (in your time zone)
@@ -810,10 +898,10 @@ function weeklyAverages(weighIns, unit) {
 }
 
 // The range buttons above the charts
-document.querySelectorAll(".range-buttons button").forEach(function (button) {
+document.querySelectorAll("#weight .range-buttons button").forEach(function (button) {
   button.addEventListener("click", function () {
     weightRangeDays = button.dataset.days;
-    setPref("weightRange", weightRangeDays);
+    setPref("weightRange", weightRangeDays || "all");   // an empty value wouldn't be remembered
     renderWeight();
   });
 });
@@ -822,7 +910,9 @@ function renderWeight() {
   const unit = getPref("weightUnit", "kg");
   const weighIns = loadEntries()
     .filter(function (e) { return e.type === "bodyweight"; })
-    .sort(function (a, b) { return (a.date + a.createdAt).localeCompare(b.date + b.createdAt); });
+    .sort(function (a, b) {
+      return (a.date + entryTime(a) + a.createdAt).localeCompare(b.date + entryTime(b) + b.createdAt);
+    });
 
   document.getElementById("weight-empty").hidden = weighIns.length > 0;
   document.getElementById("weight-content").hidden = weighIns.length === 0;
@@ -851,7 +941,7 @@ function renderWeight() {
   }
 
   // --- Only what's inside the chosen range ---
-  document.querySelectorAll(".range-buttons button").forEach(function (button) {
+  document.querySelectorAll("#weight .range-buttons button").forEach(function (button) {
     button.classList.toggle("active", button.dataset.days === weightRangeDays);
   });
   const from = weightRangeDays ? shiftDate(today(), -Number(weightRangeDays)) : "";
@@ -881,6 +971,7 @@ function weightPoint(e, unit) {
     x: new Date(e.date + "T00:00").getTime(),
     y: round1(weightIn(e, unit)),
     date: e.date,
+    time: entryTime(e),
     note: toiletNote(e, " · ")
   };
 }
@@ -954,7 +1045,7 @@ function chartOptions(colors, unit) {
       tooltip: { callbacks: {
         title: function (items) {
           const p = items[0].raw;
-          return (p.isWeek ? "Week of " : "") + formatDate(p.date);
+          return (p.isWeek ? "Week of " : "") + formatDate(p.date) + (p.time ? " · " + formatTime(p.time) : "");
         },
         label: function (item) {
           return item.dataset.label + ": " + item.raw.y + " " + unit + item.raw.note;

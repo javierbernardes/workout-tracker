@@ -40,7 +40,11 @@
 
         <!-- Shown while a workout is running (filled in by app.js) -->
         <div id="current-workout" class="workout-box" hidden>
-          <div class="workout-title">💪 Workout in progress</div>
+          <div class="workout-title">
+            💪 Workout in progress
+            <!-- Counts up from when you pressed Start (updated by app.js) -->
+            <span id="workout-timer">0:00:00</span>
+          </div>
           <ul id="workout-items"></ul>
           <div class="type-grid">
             <button class="type-btn" data-form="form-weights">🏋️ Add weights</button>
@@ -61,14 +65,19 @@
         <button type="button" class="back">← Back</button>
         <h2>✅ Finish workout</h2>
 
-        <label>Date
-          <input type="date" name="date" required>
-        </label>
+        <div class="row">
+          <label>Date
+            <input type="date" name="date" required>
+          </label>
+          <label>Time
+            <input type="time" name="time" required>
+          </label>
+        </div>
 
         <label>Total time (minutes)
           <input type="number" name="minutes" min="1" step="1" inputmode="numeric" required>
         </label>
-        <p class="hint small">The whole session including rests. Used later to estimate calories.</p>
+        <p class="hint small" id="finish-hint">Filled in from the timer. Change it if you finished earlier.</p>
 
         <label>Notes (optional)
           <input name="notes" placeholder="e.g. push day">
@@ -168,9 +177,14 @@
         <button type="button" class="back">← Back</button>
         <h2>🎾 Sports</h2>
 
-        <label>Date
-          <input type="date" name="date" required>
-        </label>
+        <div class="row">
+          <label>Date
+            <input type="date" name="date" required>
+          </label>
+          <label>Time
+            <input type="time" name="time" required>
+          </label>
+        </div>
 
         <label>Sport
           <input name="sport" list="sport-list" placeholder="e.g. Padel" autocomplete="off" required>
@@ -211,9 +225,14 @@
         <button type="button" class="back">← Back</button>
         <h2>⚖️ Body weight</h2>
 
-        <label>Date
-          <input type="date" name="date" required>
-        </label>
+        <div class="row">
+          <label>Date
+            <input type="date" name="date" required>
+          </label>
+          <label>Time
+            <input type="time" name="time" required>
+          </label>
+        </div>
 
         <div class="row">
           <label>Weight
@@ -247,6 +266,14 @@
     <!-- ============ HISTORY: list of past workouts ============ -->
     <section id="history" class="section">
       <h2>History</h2>
+
+      <!-- Show only one kind of entry (data-filter says which) -->
+      <div id="history-filter" class="range-buttons">
+        <button type="button" data-filter="all">All</button>
+        <button type="button" data-filter="workout">💪 Workouts</button>
+        <button type="button" data-filter="sports">🎾 Sports</button>
+        <button type="button" data-filter="bodyweight">⚖️ Weight</button>
+      </div>
       <ul id="history-list"></ul>
     </section>
 
