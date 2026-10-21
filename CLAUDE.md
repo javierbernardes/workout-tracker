@@ -164,7 +164,12 @@ Just for the user for now, but designed so others can use it later (every entry 
      (`deleteWithUndo`, `swipeRow`); undo re-adds the same entries via `recordChange`.
    - Tab bar and Progress segmented control are translucent/pill-indicator surfaces moved by
      springs; Week view swipes between weeks (`goWeek`). Morning screen materializes.
-   - Exercise picking (2026-10-21, user's design): workout card has one "+ Add exercise"
+   - Log home (2026-10-21, user's design): full-width blue "Burned today" band (edge to edge on
+     phones), a big "Start a workout" hero card, and a centered "Or log something else" row.
+     Start opens `#workout-page` (timer, exercise list, Add exercise, Finish) which slides in
+     from the right (`openWorkoutPage`/`closeWorkoutPage`); ‹ returns to the home, where a
+     "Workout in progress · tap to continue" banner (`#current-workout`) reopens it.
+   - Exercise picking (2026-10-21, user's design): the workout screen has one "+ Add exercise"
      button → sheet step `pick-kind` (Exercises / Cardio squares + Finish workout) →
      `pick-group` (Chest, Back, Arms [incl. shoulders], Legs, Abs, Other [mobility/stretches
      + your own past names]) → `pick-exercise` squares (+ "Something else…") → weights form.

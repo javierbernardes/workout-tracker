@@ -103,31 +103,41 @@
           </div>
         </div>
 
-        <h2>Log a workout</h2>
-
-        <!-- Shown when no workout is running -->
-        <div id="no-workout" class="log-form">
-          <button type="button" id="start-workout" class="save">▶ Start a workout</button>
-          <p class="hint small">For weights and cardio: add your exercises one by one, then finish the workout.</p>
+        <!-- No workout running: the big Start card -->
+        <div id="no-workout">
+          <button type="button" id="start-workout" class="hero">
+            <span class="hero-icon">💪</span>
+            <span class="hero-title">Start a workout</span>
+            <span class="hero-hint">Weights and cardio, one exercise at a time</span>
+          </button>
         </div>
 
-        <!-- Shown while a workout is running (filled in by app.js) -->
-        <div id="current-workout" class="workout-box" hidden>
-          <div class="workout-title">
-            💪 Workout in progress
-            <!-- Counts up from when you pressed Start (updated by app.js) -->
-            <span id="workout-timer">0:00:00</span>
-          </div>
-          <ul id="workout-items"></ul>
-          <button type="button" class="save" data-form="pick-kind">+ Add exercise</button>
-          <button type="button" class="secondary" data-form="form-finish">Finish workout</button>
-        </div>
+        <!-- Workout running: a banner that opens the workout screen -->
+        <button type="button" id="current-workout" class="hero running" hidden>
+          <span class="hero-icon">💪</span>
+          <span class="hero-title">Workout in progress</span>
+          <span class="hero-hint"><span class="workout-timer">⏱ 0:00:00</span> · tap to continue ›</span>
+        </button>
 
-        <p class="hint">Or log something else:</p>
-        <div class="type-grid">
+        <p class="hint section-label">Or log something else</p>
+        <div class="type-grid centered">
           <button class="type-btn" data-form="form-sports">🎾 Sports</button>
           <button class="type-btn" data-form="form-bodyweight">⚖️ Body weight</button>
         </div>
+      </div>
+
+      <!-- ============ THE WORKOUT SCREEN: slides in from the right on Start / Continue ============ -->
+      <div id="workout-page" class="page" hidden>
+        <div class="page-head">
+          <button type="button" class="back" id="workout-back" aria-label="Back to Log">‹</button>
+          <h2>Workout</h2>
+          <!-- Counts up from when you pressed Start (updated by app.js) -->
+          <span class="workout-timer page-timer">⏱ 0:00:00</span>
+        </div>
+        <ul id="workout-items"></ul>
+        <button type="button" class="save" data-form="pick-kind">+ Add exercise</button>
+        <button type="button" class="secondary" data-form="form-finish">Finish workout</button>
+      </div>
       </div>
 
     </section>

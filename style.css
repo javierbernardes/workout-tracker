@@ -590,27 +590,67 @@ input::-webkit-date-and-time-value { text-align: left; }
 /* ---------- The workout you're in the middle of ---------- */
 #type-picker > .hint { margin-top: 20px; }
 
-/* Lifted a little above the page (a shadow), so it reads as the thing in progress */
-.workout-box {
+/* The big Start card (and the "Workout in progress" banner, same shape) */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  width: 100%;
+  min-height: 11rem;
+  padding: var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-thin);
+}
+
+.hero-icon { font-size: 2.75rem; line-height: 1; margin-bottom: var(--sp-2); }
+.hero-title {
+  font-size: var(--fs-xl);
+  letter-spacing: var(--ls-xl);
+  line-height: var(--lh-xl);
+  font-weight: 700;
+}
+.hero-hint { color: var(--muted); font-size: var(--fs-sm); letter-spacing: var(--ls-sm); }
+
+.hero.running { border-color: transparent; background: var(--accent-soft); color: var(--accent); }
+.hero.running .hero-hint { color: var(--accent); opacity: 0.85; }
+
+.workout-timer { font-variant-numeric: tabular-nums; }   /* digits all the same width, so it doesn't jiggle */
+
+/* "Or log something else": centered, and still centered when only one square is left */
+.section-label { margin: var(--sp-6) 0 var(--sp-3); text-align: center; }
+
+.type-grid.centered { display: flex; justify-content: center; }
+.type-grid.centered > * { flex: 1 1 0; max-width: calc(50% - var(--sp-3) / 2); }
+
+/* The workout screen */
+.page {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  padding: var(--sp-4);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--card);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.1);
 }
 
-.workout-title {
+.page-head {
   display: flex;
-  justify-content: space-between;
-  font-weight: 600;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
-#workout-timer {
+.page-head h2 { margin: 0; }
+.page-head .back { margin: 0; }
+.page-timer {
+  margin-left: auto;
   color: var(--accent);
-  font-variant-numeric: tabular-nums;   /* digits all the same width, so it doesn't jiggle */
+  font-size: var(--fs-lg);
+  letter-spacing: var(--ls-lg);
+  font-weight: 600;
 }
 
 #workout-items {
@@ -619,7 +659,16 @@ input::-webkit-date-and-time-value { text-align: left; }
   list-style: none;
 }
 
+/* The exercises of the running workout: one card, one line per exercise */
+#workout-items {
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+
 #workout-items li { border-bottom: 1px solid var(--border); border-radius: 0; }
+#workout-items li:last-child { border-bottom: none; }
 
 /* The sliding part of each exercise line (see swipeRow in app.js) */
 #workout-items .swipe-card,
@@ -738,16 +787,19 @@ input::-webkit-date-and-time-value { text-align: left; }
 .pill input { width: auto; }
 .pill:has(input:checked) { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
-/* ---------- Today box (top of the Log tab) ---------- */
+/* ---------- Today box (top of the Log tab): a full-width blue band ---------- */
 .today-box {
-  padding: 14px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
+  padding: var(--sp-5) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border-radius: var(--r-xl);
+  background: linear-gradient(135deg, #2f6fed, #5b8cff);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(47, 111, 237, 0.25);
 }
 
-.today-label { font-size: var(--fs-sm); letter-spacing: var(--ls-sm); color: var(--muted); }
+.today-box .hint { color: rgba(255, 255, 255, 0.8); }
+.today-box .link-button { color: #fff; text-decoration: underline; }
+.today-label { font-size: var(--fs-sm); letter-spacing: var(--ls-sm); color: rgba(255, 255, 255, 0.8); }
 .today-value {
   font-size: var(--fs-3xl);
   letter-spacing: var(--ls-3xl);
@@ -1173,5 +1225,12 @@ body.sheet-open { overflow: hidden; }
   }
 
   main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+
+  /* On phones the band runs edge to edge */
+  .today-box {
+    margin: 0 calc(-1 * var(--sp-4)) var(--sp-4);
+    padding: var(--sp-5) var(--sp-4) var(--sp-5);
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+  }
   #toast { bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
 }

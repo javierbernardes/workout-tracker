@@ -818,7 +818,7 @@ document.getElementById("action-confirm").addEventListener("click", function () 
 document.getElementById("action-cancel").addEventListener("click", function () { actionSheet.hide(); });
 
 // Any button with data-form="..." opens that form
-document.querySelectorAll("#type-picker [data-form]").forEach(function (button) {
+document.querySelectorAll("#log [data-form]").forEach(function (button) {
   button.addEventListener("click", function () { openForm(button.dataset.form); });
 });
 
@@ -991,7 +991,31 @@ function resetForm(form) {
 document.getElementById("start-workout").addEventListener("click", function () {
   setActiveWorkout({ id: "w" + newId(), date: today(), startedAt: Date.now() });
   renderCurrentWorkout();
+  openWorkoutPage();
 });
+
+// ---------- The workout screen ----------
+// Starting (or continuing) a workout opens its own screen, which slides in from
+// the right like a new page. ‹ slides back to the Log home; the workout keeps
+// running and the home shows a "Workout in progress" banner to return to it.
+const picker = document.getElementById("type-picker");
+const workoutPage = document.getElementById("workout-page");
+
+function openWorkoutPage() {
+  if (!workoutPage.hidden) return;
+  picker.hidden = true;
+  window.scrollTo(0, 0);
+  fluid.show(workoutPage, { x: 40 }, { duration: 0.3 });
+}
+
+function closeWorkoutPage() {
+  if (workoutPage.hidden) return;
+  workoutPage.hidden = true;
+  fluid.show(picker, { x: -40 }, { duration: 0.3 });
+}
+
+document.getElementById("current-workout").addEventListener("click", openWorkoutPage);
+document.getElementById("workout-back").addEventListener("click", closeWorkoutPage);
 
 // ---------- The workout timer ----------
 // It doesn't count by itself: every second it works out "now minus the time you
@@ -1004,8 +1028,8 @@ function updateWorkoutTimer() {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor(seconds / 60) % 60;
   const s = seconds % 60;
-  document.getElementById("workout-timer").textContent =
-    "⏱ " + h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  const text = "⏱ " + h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  document.querySelectorAll(".workout-timer").forEach(function (el) { el.textContent = text; });
 }
 setInterval(updateWorkoutTimer, 1000);
 
@@ -1019,11 +1043,10 @@ function currentWorkoutEntries() {
 // Show either the "Start" button or the running workout with its exercises
 function renderCurrentWorkout() {
   const workout = getActiveWorkout();
-  const box = document.getElementById("current-workout");
+  const banner = document.getElementById("current-workout");
   document.getElementById("no-workout").hidden = !!workout;
-  if (!workout) { box.hidden = true; return; }
-  // The card grows up out of where the Start button was (only when it first appears)
-  if (box.hidden) fluid.show(box, { y: 12, scale: 0.97 });
+  banner.hidden = !workout;
+  if (!workout) { closeWorkoutPage(); return; }   // finished or discarded: back to the Log home
   updateWorkoutTimer();   // show the right time straight away, not after a second
 
   const list = document.getElementById("workout-items");
