@@ -412,7 +412,10 @@ input::-webkit-date-and-time-value { text-align: left; }
 }
 
 /* Squares: muscle groups and exercises. Big icon, name under it. */
-.type-grid.squares.three { grid-template-columns: repeat(3, 1fr); }
+/* Two columns of big squares: easy to hit with a tired, sweaty thumb */
+.type-grid.squares { grid-template-columns: repeat(2, 1fr); }
+.squares .square { font-size: var(--fs-md); letter-spacing: var(--ls-md); }
+.squares .square-icon .icon { width: 2.25rem; height: 2.25rem; }
 
 .type-btn.square {
   display: flex;
@@ -824,6 +827,14 @@ input::-webkit-date-and-time-value { text-align: left; }
 .wash, .square[class*="g-"] {
   background: linear-gradient(165deg, var(--card) 35%, rgba(var(--g), 0.18));
   border-color: rgba(var(--g), 0.25);
+}
+
+/* The small home buttons need a clearly stronger colour to stand out from the page */
+.type-btn.wash:not(.square) {
+  background: linear-gradient(165deg, rgba(var(--g), 0.12), rgba(var(--g), 0.3));
+  border-color: rgba(var(--g), 0.45);
+  color: rgb(var(--g));
+  font-weight: 600;
 }
 .wash .square-icon, .wash .btn-icon, .wash .hero-icon .icon, .square[class*="g-"] .square-icon { color: rgb(var(--g)); }
 .btn-icon .icon { width: 1.5rem; height: 1.5rem; vertical-align: -0.4rem; margin-right: 0.15rem; }
