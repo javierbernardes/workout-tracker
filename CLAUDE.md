@@ -144,6 +144,30 @@ Just for the user for now, but designed so others can use it later (every entry 
    `calibration: {everyday, sportMets, source}` (set via SQL); app applies it in
    restingPerDay/sportKcal, keeps it when the profile form is saved, and shows a note in Profile.
 
+8. ✅ UI rework (2026-10-21) following the "apple-design" skill (emilkowalski/skills); the
+   audit and rationale are in `docs/ui-audit.md`. What changed, for future work:
+   - `motion.min.js` (Motion 12.43, MIT, vendored; no CDN) + `fluid.js`, our motion layer:
+     `fluid.SPRING.default/momentum`, `project()`, `rubberband()`, `nearest()`,
+     `valuesOf(el)` (live x/y/scale/opacity/blur that write transform/opacity),
+     `springTo()`, `jump()`, `show(el, from)`, `hide(el, to)`, `pointerDrag(el, opts)`.
+     Rules: never use CSS transitions/keyframes for anything gesture-driven; animate only
+     transform/opacity; call `fluid.show/hide` instead of toggling `hidden` directly when
+     something should animate; reduced motion is handled inside fluid (fades).
+   - `style.css` starts with tokens: colors, materials (`.material`, `.material-thick`),
+     type scale `--fs-*/--ls-*/--lh-*` (size-specific tracking + leading), spacing `--sp-*`,
+     radii `--r-*`, `--tap` (44px). Three media queries: reduced-motion, reduced-transparency,
+     prefers-contrast. Press feedback is `button:active` (scale) / `.tappable:active` (tint).
+   - All six logging forms live in `#sheet` (a draggable bottom sheet, `makeSheet` in app.js
+     part 4) and open over whatever tab you're on; editing from History stays on History.
+     `askConfirm()` (the small `#action-sheet`) replaces `confirm()` for "Discard workout" and
+     "Sign out". Deleting entries/exercises is swipe-left (or × with a mouse) + Undo toast
+     (`deleteWithUndo`, `swipeRow`); undo re-adds the same entries via `recordChange`.
+   - Tab bar and Progress segmented control are translucent/pill-indicator surfaces moved by
+     springs; Week view swipes between weeks (`goWeek`). Morning screen materializes.
+   - Testing here: `python3 -m http.server 8080` + Playwright (Chromium is preinstalled in the
+     cloud session); Chart.js can't load there (CDN blocked), charts are untested in that setup.
+     The user tests on iPhone. `sw.js` CACHE is "workout-tracker-v2"; bump it if the file list changes.
+
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.
 Git signs in via Git Credential Manager (browser); no `gh` CLI installed.

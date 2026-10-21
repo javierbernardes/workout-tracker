@@ -1,5 +1,15 @@
 # UI audit against the Apple Design skill
 
+> **Status (2026-10-21, after the rework):** all P1/P2/P3 rows below are done, in eight
+> commits (`Add motion and design-token foundations` → `Polish pass`). Corrections to the
+> audit: Chart.js was already drawn with `animation: false`, so no chart-animation change was
+> needed. Deliberately *not* done: swipe-paging between Week/Weight/Strength (buttons are
+> enough; a second horizontal gesture next to the week swipe would fight it), haptics (no
+> meaningful moment earns one yet), a desktop top-bar material for the header (it scrolls away;
+> it isn't navigation), set-row exit animation (a leaving row would still count as a set while
+> animating; removal stays instant). Motion is vendored (`motion.min.js`), not npm-installed,
+> because the project has no build step and must work offline.
+
 Audited 2026-10-21, before any edits. Source of truth: `apple-design/SKILL.md`
 (emilkowalski/skills). Section numbers below (§1–§16) refer to that file.
 
