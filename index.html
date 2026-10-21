@@ -105,7 +105,7 @@
 
         <!-- No workout running: the big Start card -->
         <div id="no-workout">
-          <button type="button" id="start-workout" class="hero">
+          <button type="button" id="start-workout" class="hero wash g-chest">
             <span class="hero-icon" data-icon="dumbbell"></span>
             <span class="hero-title">Start a workout</span>
             <span class="hero-hint">Weights and cardio, one exercise at a time</span>
@@ -121,8 +121,8 @@
 
         <p class="hint section-label">Or log something else</p>
         <div class="type-grid centered">
-          <button class="type-btn" data-form="form-sports"><span data-icon="ball"></span> Sports</button>
-          <button class="type-btn" data-form="form-bodyweight"><span data-icon="scale"></span> Body weight</button>
+          <button class="type-btn wash g-sports" data-form="form-sports"><span class="btn-icon" data-icon="ball"></span> Sports</button>
+          <button class="type-btn wash g-weight" data-form="form-bodyweight"><span class="btn-icon" data-icon="scale"></span> Body weight</button>
         </div>
       </div>
 
@@ -135,8 +135,14 @@
           <span class="page-timer"><span data-icon="clock"></span> <span class="workout-timer">0:00:00</span></span>
         </div>
         <ul id="workout-items"></ul>
-        <button type="button" class="save" data-form="pick-kind">+ Add exercise</button>
-        <button type="button" class="secondary" data-form="form-finish">Finish workout</button>
+        <button type="button" class="save" data-flow="pick-kind">+ Add exercise</button>
+        <button type="button" class="save danger" data-flow="form-finish">Finish workout</button>
+      </div>
+
+      <!-- ============ THE FLOW SCREEN: the exercise-picking steps and forms, shown as full
+           screens during a workout (the same steps open in the bottom sheet elsewhere) ============ -->
+      <div id="flow-page" class="page" hidden>
+        <div class="flow-body"></div>
       </div>
       </div>
 
@@ -351,7 +357,7 @@
           <button type="button" class="type-btn square" data-step="pick-group"><span class="square-icon" data-icon="dumbbell"></span>Exercises</button>
           <button type="button" class="type-btn square" data-step="form-cardio"><span class="square-icon" data-icon="run"></span>Cardio</button>
         </div>
-        <button type="button" class="save" data-step="form-finish">Finish workout</button>
+        <button type="button" class="save danger" data-step="form-finish">Finish workout</button>
       </div>
 
       <!-- ---------- Which muscles? (six squares, filled in by app.js) ---------- -->

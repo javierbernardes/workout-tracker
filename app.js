@@ -497,10 +497,11 @@ tabs.forEach(function (tab) {
     tab.classList.add("active");
     tab.setAttribute("aria-current", "page");
     moveTabIndicator(tab);
+    // The old section is gone at once (no waiting); the new one fades in with a small rise.
+    // It's shown first, because measuring positions (the Progress pill) only works when visible.
+    fluid.show(document.getElementById(target), { y: 8 }, { duration: 0.25 });
     if (target === "history") renderHistory();
     if (target === "weight") renderProgress();
-    // The old section is gone at once (no waiting); the new one fades in with a small rise
-    fluid.show(document.getElementById(target), { y: 8 }, { duration: 0.25 });
   });
 });
 
@@ -664,24 +665,61 @@ const formSheet = makeSheet(document.getElementById("sheet"), document.getElemen
   }
 });
 
+// Steps can be shown two ways: in the bottom sheet (logging a sport or weight from
+// the home, editing from History) or as full screens during a workout (the
+// exercise picker and its forms). The step element is simply moved into whichever
+// container is in use; its buttons keep working wherever it lives.
+let stepMode = "sheet";          // "sheet" or "page"
+const flowPage = document.getElementById("flow-page");
+
 // Show one step. direction: 1 = going forward (slides in from the right),
 // -1 = going back (from the left), 0 = the first step (just appears).
 function showStep(stepId, direction) {
   const step = document.getElementById(stepId);
+  const container = stepMode === "page" ? flowPage.querySelector(".flow-body")
+                                        : document.querySelector("#sheet .sheet-body");
+  if (step.parentNode !== container) container.appendChild(step);
   steps.forEach(function (s) { if (s !== step) s.hidden = true; });
   if (step.tagName === "FORM") resetForm(step);
   if (stepId === "pick-group") renderGroupSquares();
   currentStep = stepId;
-  document.querySelector("#sheet .sheet-body").scrollTop = 0;
+  if (stepMode === "page") window.scrollTo(0, 0);
+  else container.scrollTop = 0;
   if (direction) fluid.show(step, { x: 24 * direction }, { duration: 0.3 });
   else step.hidden = false;
 }
 
 // Open the sheet on a step, starting a fresh trail
 function openForm(stepId) {
+  stepMode = "sheet";
   sheetStack = [];
   showStep(stepId, 0);
   formSheet.show();
+}
+
+// Open a step as a full screen over the workout screen (slides in from the right)
+function openFlow(stepId) {
+  stepMode = "page";
+  sheetStack = [];
+  showStep(stepId, 0);
+  workoutPage.hidden = true;
+  window.scrollTo(0, 0);
+  fluid.show(flowPage, { x: 40 }, { duration: 0.3 });
+}
+
+// Leave the flow screens: back to the workout screen, or to the Log home if the
+// workout is over (finished or discarded)
+function closeFlow() {
+  flowPage.hidden = true;
+  if (getActiveWorkout()) {
+    fluid.show(workoutPage, { x: -40 }, { duration: 0.3 });
+  } else {
+    workoutPage.hidden = true;
+    fluid.show(picker, { x: -40 }, { duration: 0.3 });
+  }
+  if (editing) stopEditing(true);
+  renderCurrentWorkout();
+  updateWeightButtons();
 }
 
 // Go one step deeper (remembering where we came from)
@@ -703,12 +741,18 @@ function afterSave() {
 }
 
 function closeForms() {
-  formSheet.hide();
+  if (stepMode === "page") closeFlow();
+  else formSheet.hide();
 }
 
-// Squares inside the sheet that lead to another step
-document.querySelectorAll("#sheet [data-step]").forEach(function (button) {
+// Squares inside a step that lead to another step
+document.querySelectorAll(".sheet-step [data-step]").forEach(function (button) {
   button.addEventListener("click", function () { goStep(button.dataset.step); });
+});
+
+// Buttons on the workout screen that open a step as a full screen
+document.querySelectorAll("[data-flow]").forEach(function (button) {
+  button.addEventListener("click", function () { openFlow(button.dataset.flow); });
 });
 
 // The "Log a weigh-in" button in Progress › Weight opens the body weight form too
@@ -1962,7 +2006,9 @@ function renderProgress() {
   // The pill springs behind the chosen view (from wherever it is right now)
   const indicator = document.querySelector(".seg-indicator");
   const x = chosen.offsetLeft - buttons[0].offsetLeft;
-  if (indicator.hidden || document.getElementById("weight").hidden) fluid.jump(fluid.valuesOf(indicator).x, x);
+  const wasOff = indicator.dataset.placed !== "1";
+  indicator.dataset.placed = "1";
+  if (wasOff || document.getElementById("weight").hidden) fluid.jump(fluid.valuesOf(indicator).x, x);
   else fluid.springTo(fluid.valuesOf(indicator).x, x);
 
   document.querySelectorAll(".progress-view").forEach(function (v) {

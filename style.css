@@ -7,7 +7,7 @@
   color-scheme: light dark;   /* lets the browser draw native parts (date pickers, selects) in the right theme */
 
   /* ---------- Colors ---------- */
-  --bg: #f4f5f7;        /* page background */
+  --bg: #f2f4f9;        /* page background: a whisper of blue, not plain grey */
   --card: #ffffff;      /* boxes and buttons */
   --text: #1a1f2b;      /* main text */
   --muted: #6b7280;     /* secondary text */
@@ -810,18 +810,23 @@ input::-webkit-date-and-time-value { text-align: left; }
 .morning-icon .icon { width: 4rem; height: 4rem; stroke-width: 1.5; color: var(--accent); }
 .today-label .icon { color: #ffd166; }
 
-/* One colour per muscle group: a soft wash on the square and a coloured icon */
-.square.g-chest { --g: 47, 111, 237; }
-.square.g-back { --g: 20, 150, 140; }
-.square.g-arms { --g: 235, 120, 40; }
-.square.g-legs { --g: 60, 160, 80; }
-.square.g-abs { --g: 220, 70, 90; }
-.square.g-other { --g: 130, 90, 220; }
-.square[class*="g-"] {
+/* A touch of colour: each kind of thing has its own hue (--g, as "r, g, b"), used as
+   a soft wash on cards and squares and as the colour of their icon */
+.g-chest { --g: 47, 111, 237; }
+.g-back { --g: 20, 150, 140; }
+.g-arms { --g: 235, 120, 40; }
+.g-legs { --g: 60, 160, 80; }
+.g-abs { --g: 220, 70, 90; }
+.g-other { --g: 130, 90, 220; }
+.g-sports { --g: 60, 160, 80; }
+.g-weight { --g: 20, 150, 140; }
+
+.wash, .square[class*="g-"] {
   background: linear-gradient(165deg, var(--card) 35%, rgba(var(--g), 0.18));
   border-color: rgba(var(--g), 0.25);
 }
-.square[class*="g-"] .square-icon { color: rgb(var(--g)); }
+.wash .square-icon, .wash .btn-icon, .wash .hero-icon .icon, .square[class*="g-"] .square-icon { color: rgb(var(--g)); }
+.btn-icon .icon { width: 1.5rem; height: 1.5rem; vertical-align: -0.4rem; margin-right: 0.15rem; }
 
 /* ---------- Today box (top of the Log tab): a blue card ---------- */
 .today-box {
@@ -1081,6 +1086,8 @@ label.field {
 .chart-box.short { height: 160px; margin-top: 8px; }
 
 h3 { font-size: var(--fs-md); margin: var(--sp-5) 0 var(--sp-2); }
+
+#weight-log-button { width: 100%; margin-bottom: var(--sp-4); }
 
 /* Theme changes ease instead of snapping (not under reduced motion) */
 @media (prefers-reduced-motion: no-preference) {

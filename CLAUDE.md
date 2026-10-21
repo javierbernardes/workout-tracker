@@ -174,6 +174,11 @@ Just for the user for now, but designed so others can use it later (every entry 
      `pick-group` (Chest, Back, Arms [incl. shoulders], Legs, Abs, Other [mobility/stretches
      + your own past names]) → `pick-exercise` squares (+ "Something else…") → weights form.
      Saving goes back one step (`afterSave`/`sheetStack`); ‹ goes back a step or closes.
+     Steps have two presenters (`stepMode`): during a workout they are full screens
+     (`#flow-page` in the Log section, opened by `[data-flow]` buttons via `openFlow`, slide
+     in from the right; `closeFlow` returns to the workout screen or the home); from the
+     home / History they open in the bottom sheet (`[data-form]` → `openForm`). The step
+     element is moved into whichever container is in use. Finish workout buttons are red.
      Lists live in `EXERCISE_GROUPS`. Selects and suggestion inputs have a drawn chevron.
    - Icons (2026-10-21): no emojis in the UI. `icons.js` holds small SVG line icons
      (`ICON_PATHS`, `icon(name)` → element, `iconHTML(name)`); any `<span data-icon="name">`
