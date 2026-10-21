@@ -119,11 +119,8 @@
             <span id="workout-timer">0:00:00</span>
           </div>
           <ul id="workout-items"></ul>
-          <div class="type-grid">
-            <button class="type-btn" data-form="form-weights">🏋️ Add weights</button>
-            <button class="type-btn" data-form="form-cardio">🏃 Add cardio</button>
-          </div>
-          <button type="button" class="save" data-form="form-finish">Finish workout</button>
+          <button type="button" class="save" data-form="pick-kind">+ Add exercise</button>
+          <button type="button" class="secondary" data-form="form-finish">Finish workout</button>
         </div>
 
         <p class="hint">Or log something else:</p>
@@ -198,6 +195,7 @@
 
       <!-- ---------- WEIGHT: body weight (as before) ---------- -->
       <div id="view-weight" class="progress-view" hidden>
+      <button type="button" id="weight-log-button" class="save" data-form="form-bodyweight" hidden>⚖️ Log another weigh-in</button>
       <h2>Body weight</h2>
       <p id="weight-empty" class="hint" hidden>No weigh-ins yet. Log one from the Log tab.</p>
 
@@ -335,9 +333,34 @@
   <div id="sheet" class="sheet material-thick" role="dialog" aria-modal="true" tabindex="-1" hidden>
     <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="sheet-body">
+      <!-- ---------- ADD TO WORKOUT: pick Exercises or Cardio (first step) ---------- -->
+      <div id="pick-kind" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
+        <h2>Add to workout</h2>
+        <div class="type-grid squares">
+          <button type="button" class="type-btn square" data-step="pick-group"><span class="square-icon">🏋️</span>Exercises</button>
+          <button type="button" class="type-btn square" data-step="form-cardio"><span class="square-icon">🏃</span>Cardio</button>
+        </div>
+        <button type="button" class="save" data-step="form-finish">Finish workout</button>
+      </div>
+
+      <!-- ---------- Which muscles? (six squares, filled in by app.js) ---------- -->
+      <div id="pick-group" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
+        <h2>Which muscles?</h2>
+        <div class="type-grid squares three" id="group-grid"></div>
+      </div>
+
+      <!-- ---------- The exercises of that group (squares, filled in by app.js) ---------- -->
+      <div id="pick-exercise" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
+        <h2 id="pick-exercise-title">Exercises</h2>
+        <div class="type-grid squares three" id="exercise-grid"></div>
+      </div>
+
       <!-- ---------- WAKE-UP form (only for editing one from History) ---------- -->
-      <form id="form-wake" class="log-form" hidden>
-        <button type="button" class="back">Cancel</button>
+      <form id="form-wake" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
         <h2>☀️ Wake-up time</h2>
         <div class="row">
           <label>Date
@@ -351,8 +374,8 @@
       </form>
 
       <!-- ---------- FINISH WORKOUT form ---------- -->
-      <form id="form-finish" class="log-form" hidden>
-        <button type="button" class="back">Cancel</button>
+      <form id="form-finish" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
         <h2>✅ Finish workout</h2>
 
         <div class="row">
@@ -389,8 +412,8 @@
       </form>
 
       <!-- ---------- WEIGHTS form ---------- -->
-      <form id="form-weights" class="log-form" hidden>
-        <button type="button" class="back">Cancel</button>
+      <form id="form-weights" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
         <h2>🏋️ Weights</h2>
 
         <!-- "list" connects this box to the suggestions below -->
@@ -421,8 +444,8 @@
       </form>
 
       <!-- ---------- CARDIO form ---------- -->
-      <form id="form-cardio" class="log-form" hidden>
-        <button type="button" class="back">Cancel</button>
+      <form id="form-cardio" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
         <h2>🏃 Cardio</h2>
 
         <label>Activity
@@ -482,8 +505,8 @@
       </form>
 
       <!-- ---------- SPORTS form ---------- -->
-      <form id="form-sports" class="log-form" hidden>
-        <button type="button" class="back">Cancel</button>
+      <form id="form-sports" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
         <h2>🎾 Sports</h2>
 
         <div class="row">
@@ -531,8 +554,8 @@
       </form>
 
       <!-- ---------- BODY WEIGHT form ---------- -->
-      <form id="form-bodyweight" class="log-form" hidden>
-        <button type="button" class="back">Cancel</button>
+      <form id="form-bodyweight" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
         <h2>⚖️ Body weight</h2>
 
         <div class="row">

@@ -164,6 +164,14 @@ Just for the user for now, but designed so others can use it later (every entry 
      (`deleteWithUndo`, `swipeRow`); undo re-adds the same entries via `recordChange`.
    - Tab bar and Progress segmented control are translucent/pill-indicator surfaces moved by
      springs; Week view swipes between weeks (`goWeek`). Morning screen materializes.
+   - Exercise picking (2026-10-21, user's design): workout card has one "+ Add exercise"
+     button → sheet step `pick-kind` (Exercises / Cardio squares + Finish workout) →
+     `pick-group` (Chest, Back, Arms [incl. shoulders], Legs, Abs, Other [mobility/stretches
+     + your own past names]) → `pick-exercise` squares (+ "Something else…") → weights form.
+     Saving goes back one step (`afterSave`/`sheetStack`); ‹ goes back a step or closes.
+     Lists live in `EXERCISE_GROUPS`. Selects and suggestion inputs have a drawn chevron.
+   - Body weight square on Log shows only until today's weigh-in exists; afterwards a
+     "Log another weigh-in" button sits at the top of Progress › Weight (`updateWeightButtons`).
    - Testing here: `python3 -m http.server 8080` + Playwright (Chromium is preinstalled in the
      cloud session); Chart.js can't load there (CDN blocked), charts are untested in that setup.
      The user tests on iPhone. `sw.js` CACHE is "workout-tracker-v2"; bump it if the file list changes.

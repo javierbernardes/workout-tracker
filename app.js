@@ -647,22 +647,147 @@ function makeSheet(sheet, scrim, options) {
   return { show: show, hide: hide, isOpen: function () { return open; } };
 }
 
-const forms = document.querySelectorAll("#sheet form.log-form");
+// The sheet holds "steps": the six forms plus the exercise picker screens
+// (Add to workout → Which muscles? → the exercises). Only one step shows at a time.
+// sheetStack remembers the steps you came through, so ‹ takes you back one by one.
+const steps = document.querySelectorAll("#sheet .sheet-step");
+const forms = document.querySelectorAll("#sheet form.sheet-step");
+let sheetStack = [];
+let currentStep = null;
+
 const formSheet = makeSheet(document.getElementById("sheet"), document.getElementById("sheet-scrim"), {
   onClose: function () {
     if (editing) stopEditing(true);     // dragged away mid-edit: cancel the edit
+    sheetStack = [];
     renderCurrentWorkout();
+    updateWeightButtons();
   }
 });
 
-function openForm(formId) {
-  forms.forEach(function (form) { form.hidden = form.id !== formId; });
-  resetForm(document.getElementById(formId));
+// Show one step. direction: 1 = going forward (slides in from the right),
+// -1 = going back (from the left), 0 = the first step (just appears).
+function showStep(stepId, direction) {
+  const step = document.getElementById(stepId);
+  steps.forEach(function (s) { if (s !== step) s.hidden = true; });
+  if (step.tagName === "FORM") resetForm(step);
+  if (stepId === "pick-group") renderGroupSquares();
+  currentStep = stepId;
+  document.querySelector("#sheet .sheet-body").scrollTop = 0;
+  if (direction) fluid.show(step, { x: 24 * direction }, { duration: 0.3 });
+  else step.hidden = false;
+}
+
+// Open the sheet on a step, starting a fresh trail
+function openForm(stepId) {
+  sheetStack = [];
+  showStep(stepId, 0);
   formSheet.show();
+}
+
+// Go one step deeper (remembering where we came from)
+function goStep(stepId) {
+  sheetStack.push(currentStep);
+  showStep(stepId, 1);
+}
+
+// ‹ : back to the previous step, or close the sheet if this was the first
+function sheetBack() {
+  if (sheetStack.length) showStep(sheetStack.pop(), -1);
+  else closeForms();
+}
+
+// After saving: back to where you picked from (so you can add the next one), or close
+function afterSave() {
+  if (sheetStack.length) sheetBack();
+  else closeForms();
 }
 
 function closeForms() {
   formSheet.hide();
+}
+
+// Squares inside the sheet that lead to another step
+document.querySelectorAll("#sheet [data-step]").forEach(function (button) {
+  button.addEventListener("click", function () { goStep(button.dataset.step); });
+});
+
+// The "Log a weigh-in" button in Progress › Weight opens the body weight form too
+document.getElementById("weight-log-button").addEventListener("click", function () { openForm("form-bodyweight"); });
+
+// The Body weight square on Log is only for today's first weigh-in; once it's logged,
+// the button moves to Progress › Weight instead.
+function updateWeightButtons() {
+  const t = today();
+  const logged = loadEntries().some(function (e) { return e.type === "bodyweight" && e.date === t; });
+  document.querySelector('#type-picker [data-form="form-bodyweight"]').hidden = logged;
+  document.getElementById("weight-log-button").hidden = !logged;
+}
+
+// ---------- Picking an exercise: six muscle groups, then the exercises ----------
+const EXERCISE_GROUPS = [
+  { name: "Chest", icon: "🏋️", exercises: ["Bench press", "Incline bench press", "Dumbbell press",
+      "Incline dumbbell press", "Chest fly", "Cable crossover", "Push-up", "Dips"] },
+  { name: "Back", icon: "🧗", exercises: ["Deadlift", "Pull-up", "Lat pulldown", "Barbell row",
+      "Dumbbell row", "Seated row", "T-bar row", "Face pull"] },
+  { name: "Arms", icon: "💪", exercises: ["Bicep curl", "Hammer curl", "Preacher curl", "Tricep pushdown",
+      "Skull crusher", "Overhead tricep extension", "Shoulder press", "Lateral raise", "Rear delt fly"] },
+  { name: "Legs", icon: "🦵", exercises: ["Squat", "Front squat", "Leg press", "Romanian deadlift", "Lunge",
+      "Bulgarian split squat", "Hip thrust", "Leg extension", "Leg curl", "Calf raise"] },
+  { name: "Abs", icon: "🔥", exercises: ["Plank", "Crunch", "Cable crunch", "Hanging leg raise",
+      "Russian twist", "Ab wheel rollout", "Mountain climbers", "Dead bug"] },
+  { name: "Other", icon: "🧘", exercises: ["Cat-cow", "World's greatest stretch", "90/90 hip stretch",
+      "Hip flexor stretch", "Hamstring stretch", "Pigeon stretch", "Couch stretch", "Thoracic rotation",
+      "Shoulder dislocates (band)", "Foam rolling"] }
+];
+
+function renderGroupSquares() {
+  const grid = document.getElementById("group-grid");
+  grid.innerHTML = "";
+  EXERCISE_GROUPS.forEach(function (group) {
+    grid.appendChild(makeSquare(group.icon, group.name, function () {
+      renderExerciseSquares(group);
+      goStep("pick-exercise");
+    }));
+  });
+}
+
+function renderExerciseSquares(group) {
+  document.getElementById("pick-exercise-title").textContent = group.icon + " " + group.name;
+  const grid = document.getElementById("exercise-grid");
+  grid.innerHTML = "";
+  let names = group.exercises.slice();
+  // Names you typed yourself before (not in any list) show up under Other
+  if (group.name === "Other") {
+    const known = EXERCISE_GROUPS.reduce(function (all, g) { return all.concat(g.exercises); }, []);
+    loadEntries().filter(function (e) { return e.type === "weights"; }).forEach(function (e) {
+      if (!known.includes(e.exercise) && !names.includes(e.exercise)) names.push(e.exercise);
+    });
+  }
+  names.forEach(function (name) {
+    grid.appendChild(makeSquare(group.icon, name, function () { startExercise(name); }));
+  });
+  grid.appendChild(makeSquare("✏️", "Something else…", function () { startExercise(""); }));
+}
+
+function makeSquare(icon, label, onPick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "type-btn square";
+  const iconSpan = document.createElement("span");
+  iconSpan.className = "square-icon";
+  iconSpan.textContent = icon;
+  button.append(iconSpan, label);
+  button.addEventListener("click", onPick);
+  return button;
+}
+
+// Open the weights form for that exercise (empty name = type your own)
+function startExercise(name) {
+  goStep("form-weights");
+  const f = document.getElementById("form-weights").elements;
+  f.exercise.value = name;
+  f.exercise.dispatchEvent(new Event("input"));   // shows "Last time: …" if you've done it
+  if (!name) f.exercise.focus();
 }
 
 // A yes/no question for the two actions that can't be undone. Returns a promise
@@ -701,7 +826,7 @@ document.querySelectorAll("#type-picker [data-form]").forEach(function (button) 
 document.querySelectorAll(".back").forEach(function (button) {
   button.addEventListener("click", function () {
     if (editing) stopEditing(true);
-    else closeForms();
+    else sheetBack();
   });
 });
 
@@ -985,13 +1110,8 @@ document.getElementById("discard-workout").addEventListener("click", function ()
 //  Common names, plus any you've typed before.
 // =====================================================
 
-const COMMON_EXERCISES = [
-  "Bench press", "Incline bench press", "Dumbbell press", "Chest fly", "Push-up",
-  "Shoulder press", "Lateral raise", "Pull-up", "Lat pulldown", "Seated row",
-  "Barbell row", "Deadlift", "Romanian deadlift", "Squat", "Leg press", "Lunge",
-  "Leg extension", "Leg curl", "Calf raise", "Bicep curl", "Hammer curl",
-  "Tricep pushdown", "Dips", "Plank", "Crunch"
-];
+// Every exercise from the six groups, for the suggestions list when you type a name
+const COMMON_EXERCISES = EXERCISE_GROUPS.reduce(function (all, g) { return all.concat(g.exercises); }, []);
 
 const COMMON_SPORTS = [
   "Padel", "Golf", "Soccer", "Tennis", "Basketball", "Volleyball", "Swimming", "Cycling"
@@ -1200,8 +1320,8 @@ document.getElementById("form-weights").addEventListener("submit", function (eve
   setPref("weightUnit", f.unit.value);
   showToast("Added " + exercise + " ✓");
 
-  // Go back to the workout, where you can add the next exercise or finish
-  closeForms();
+  // Back to the list of exercises, ready for the next one
+  afterSave();
 });
 
 cardioForm.addEventListener("submit", function (event) {
@@ -1247,7 +1367,7 @@ cardioForm.addEventListener("submit", function (event) {
   entry.workoutId = workout.id;
   addEntry(entry);
   showToast("Added " + activity + " ✓");
-  closeForms();
+  afterSave();
 });
 
 sportsForm.addEventListener("submit", function (event) {
@@ -1615,6 +1735,7 @@ document.querySelectorAll("#weight .range-buttons button").forEach(function (but
 });
 
 function renderWeight() {
+  updateWeightButtons();
   const unit = getPref("weightUnit", "kg");
   const weighIns = loadEntries()
     .filter(function (e) { return e.type === "bodyweight"; })
@@ -2365,6 +2486,7 @@ function nowMinutes() {
 
 // The "Burned today so far" box at the top of the Log tab
 function renderToday() {
+  updateWeightButtons();
   const t = today();
   const wake = wakeEntryFor(t);
   document.getElementById("today-wake-text").textContent = wake

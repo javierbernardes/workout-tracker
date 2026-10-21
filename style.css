@@ -343,6 +343,25 @@ input:focus, select:focus {
   outline-offset: -1px;
 }
 
+/* Anything you choose from (drop-downs, and the boxes with a suggestions list)
+   gets a small chevron on the right, the same on every device */
+select, input[list] {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+@media (prefers-color-scheme: dark) {
+  select, input[list] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%239aa1ad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+
+input[list]::-webkit-calendar-picker-indicator { display: none; }   /* the browser's own arrow: ours replaces it */
+
 /* Two fields side by side, e.g. "Weight" and "Unit" */
 .row {
   display: grid;
@@ -372,15 +391,44 @@ input::-webkit-date-and-time-value { text-align: left; }
 
 .check input { width: auto; }
 
+/* The ‹ button at the top-left of every sheet step: back one step, or close */
 .back {
   align-self: flex-start;
-  padding: 0;
+  width: var(--tap);
+  height: var(--tap);
+  margin: calc(-1 * var(--sp-1)) 0 calc(-1 * var(--sp-2)) calc(-1 * var(--sp-2));
+  padding: 0 0 0.2rem;
   border: none;
-  background: none;
+  border-radius: 999px;
+  background: var(--press);
   color: var(--accent);
   font: inherit;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
 }
+
+/* Squares: muscle groups and exercises. Big icon, name under it. */
+.type-grid.squares.three { grid-template-columns: repeat(3, 1fr); }
+
+.type-btn.square {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  aspect-ratio: 1;
+  padding: var(--sp-2);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.square-icon { font-size: 1.75rem; line-height: 1; }
+.squares:not(.three) .square-icon { font-size: 2.25rem; }
 
 .save {
   padding: 14px;
