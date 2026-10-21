@@ -1801,10 +1801,23 @@ document.querySelectorAll("#progress-views button").forEach(function (button) {
 });
 
 function renderProgress() {
-  document.querySelectorAll("#progress-views button").forEach(function (b) {
-    b.classList.toggle("active", b.dataset.view === progressView);
+  const buttons = document.querySelectorAll("#progress-views button");
+  let chosen = null;
+  buttons.forEach(function (b) {
+    const active = b.dataset.view === progressView;
+    b.classList.toggle("active", active);
+    if (active) chosen = b;
   });
-  document.querySelectorAll(".progress-view").forEach(function (v) { v.hidden = v.id !== progressView; });
+  // The pill springs behind the chosen view (from wherever it is right now)
+  const indicator = document.querySelector(".seg-indicator");
+  const x = chosen.offsetLeft - buttons[0].offsetLeft;
+  if (indicator.hidden || document.getElementById("weight").hidden) fluid.jump(fluid.valuesOf(indicator).x, x);
+  else fluid.springTo(fluid.valuesOf(indicator).x, x);
+
+  document.querySelectorAll(".progress-view").forEach(function (v) {
+    if (v.id === progressView) { if (v.hidden) fluid.show(v, { y: 8 }, { duration: 0.25 }); }
+    else v.hidden = true;
+  });
   if (progressView === "view-week") renderWeekSummary();
   if (progressView === "view-weight") renderWeight();
   if (progressView === "view-strength") renderStrength();
@@ -1971,9 +1984,58 @@ function renderStrength() {
 let weekOffset = 0;        // 0 = this week, -1 = last week, …
 let weekChart;
 
-document.getElementById("week-prev").addEventListener("click", function () { weekOffset--; renderWeekSummary(); });
-document.getElementById("week-next").addEventListener("click", function () {
-  if (weekOffset < 0) { weekOffset++; renderWeekSummary(); }
+// Move to another week. The panel slides out the way you went and the new week
+// slides in from the other side, continuing at the speed of your swipe.
+const weekPanel = document.getElementById("view-week");
+const weekX = fluid.valuesOf(weekPanel).x;
+const weekOpacity = fluid.valuesOf(weekPanel).opacity;
+
+function goWeek(delta, velocity) {
+  if (delta === 0 || weekOffset + delta > 0) { fluid.springTo(weekX, 0, { velocity: velocity || 0 }); return; }
+  weekOffset += delta;
+  if (fluid.reduced()) { renderWeekSummary(); return; }
+  const width = weekPanel.getBoundingClientRect().width;
+  const out = delta < 0 ? width : -width;      // previous week: content leaves to the right
+  weekPanel.style.willChange = "transform, opacity";
+  Promise.all([
+    fluid.springTo(weekX, out, Object.assign({}, fluid.SPRING.momentum, { velocity: velocity || 0 })),
+    fluid.springTo(weekOpacity, 0, { duration: 0.2 })
+  ]).then(function () {
+    renderWeekSummary();
+    fluid.jump(weekX, -out * 0.35);              // the new week comes in from the other side
+    return Promise.all([fluid.springTo(weekX, 0), fluid.springTo(weekOpacity, 1)]);
+  }).then(function () { weekPanel.style.willChange = ""; });
+}
+
+document.getElementById("week-prev").addEventListener("click", function () { goWeek(-1); });
+document.getElementById("week-next").addEventListener("click", function () { goWeek(1); });
+
+// Swiping the week panel: it follows the finger; at "this week" it only
+// rubber-bands to the left (there is no next week yet).
+let weekDragBase = 0;
+fluid.pointerDrag(weekPanel, {
+  axis: "x",
+  canStart: function (e) { return !e.target.closest("button, canvas"); },
+  onStart: function () {
+    weekX.stop();
+    weekDragBase = weekX.get();
+    weekPanel.style.willChange = "transform";
+  },
+  onMove: function (info) {
+    let x = weekDragBase + info.dx;
+    const width = weekPanel.getBoundingClientRect().width;
+    if (weekOffset === 0 && x < 0) x = fluid.rubberband(x, width);
+    fluid.jump(weekX, x);
+  },
+  onEnd: function (info) {
+    weekPanel.style.willChange = "";
+    const width = weekPanel.getBoundingClientRect().width;
+    const landing = weekX.get() + fluid.project(info.vx);
+    let delta = 0;
+    if (Math.abs(info.vx) > 400) delta = info.vx > 0 ? -1 : 1;             // a flick: its direction
+    else if (Math.abs(landing) > width / 3) delta = landing > 0 ? -1 : 1;   // a long pull: where it would land
+    goWeek(delta, info.vx);
+  }
 });
 
 // "07:10" average of a list of times

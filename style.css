@@ -709,29 +709,49 @@ input:focus, select:focus {
 /* Calories shown on History cards */
 .kcal { color: var(--accent); font-weight: 600; white-space: nowrap; }
 
-/* ---------- Progress tab: Week / Weight / Strength switch ---------- */
+/* ---------- Progress tab: Week / Weight / Strength switch ----------
+   Same idea as the tab bar: a pill that springs behind the chosen view. */
 .segmented {
+  position: relative;
   display: flex;
   padding: 3px;
-  margin-bottom: 16px;
+  margin-bottom: var(--sp-4);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--card);
 }
 
 .segmented button {
+  position: relative;
+  z-index: 1;
   flex: 1;
-  padding: 8px 0;
+  padding: var(--sp-2) 0;
   border: none;
   border-radius: 9px;
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
   cursor: pointer;
 }
 
-.segmented button.active { background: var(--accent); color: #fff; font-weight: 600; }
+.segmented button.active { color: var(--accent); font-weight: 600; }
+.segmented button:active { transform: none; opacity: 0.6; }
+
+.seg-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: 9px;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+
+/* The week panel slides sideways when you swipe between weeks */
+#view-week { touch-action: pan-y; }
 
 /* Week: ‹ This week › */
 .week-nav {
@@ -755,7 +775,7 @@ input:focus, select:focus {
   margin-bottom: 12px;
 }
 
-.stat-grid .stat-value { font-size: 1.3rem; }
+.stat-grid .stat-value { font-size: var(--fs-lg); letter-spacing: var(--ls-lg); line-height: var(--lh-lg); }
 
 /* One line per day of the week */
 .week-days { list-style: none; margin: 0 0 12px; padding: 0; }
@@ -799,59 +819,61 @@ label.field {
   background: var(--card);
 }
 
-.stat-label, .stat-note { font-size: 0.8rem; color: var(--muted); }
-.stat-value { font-size: 1.6rem; font-weight: 600; margin: 2px 0; }
+.stat-label, .stat-note { font-size: var(--fs-xs); letter-spacing: var(--ls-xs); line-height: var(--lh-xs); color: var(--muted); }
+.stat-value {
+  font-size: var(--fs-xl);
+  letter-spacing: var(--ls-xl);
+  line-height: var(--lh-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0;
+}
 
+/* Chips: 1 month / 3 months / … and the History filter. Selected = the same
+   soft pill as the tabs, so "selected" looks the same everywhere. */
 .range-buttons {
   display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
 }
 
 .range-buttons button {
   flex: 1;
-  padding: 6px 0;
+  padding: var(--sp-2) 0;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--card);
   color: var(--muted);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
   cursor: pointer;
 }
 
 .range-buttons button.active {
-  border-color: var(--accent);
+  border-color: transparent;
+  background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
 }
 
 .chart-card {
-  padding: 14px;
+  padding: var(--sp-4);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   background: var(--card);
-  margin-bottom: 12px;
+  margin-bottom: var(--sp-3);
 }
 
-/* The morning chart stands out; the other one stays quiet */
-.chart-card.main { border: 2px solid var(--accent); }
-.chart-card.secondary { opacity: 0.85; }
-.chart-card .hint.small { margin: 4px 0 8px; }
+/* The morning chart stands out by sitting higher (a deeper shadow), the other one stays flat */
+.chart-card.main {
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.1);
+}
+.chart-card .hint.small { margin: var(--sp-1) 0 var(--sp-2); }
 
 .chart-title { font-weight: 600; }
 .chart-card.secondary .chart-title { font-weight: 500; color: var(--muted); }
-
-.badge {
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 500;
-  vertical-align: middle;
-}
 
 .chart-box { position: relative; height: 260px; }
 .chart-box.short { height: 160px; margin-top: 8px; }

@@ -154,6 +154,7 @@
     <section id="weight" class="section" hidden>
       <!-- Three views; data-view says which one each button shows -->
       <div id="progress-views" class="segmented">
+        <span class="seg-indicator" aria-hidden="true"></span>
         <button type="button" data-view="view-week">📅 Week</button>
         <button type="button" data-view="view-weight">⚖️ Weight</button>
         <button type="button" data-view="view-strength">🏋️ Strength</button>
@@ -169,7 +170,7 @@
         <div class="stat-grid" id="week-stats"></div>
         <div class="chart-card">
           <div class="chart-title">🔥 Calories burned per day</div>
-          <p class="hint small">Estimated; today counts up to now.</p>
+          <p class="hint small">Estimated; today counts up to now. Swipe to see other weeks.</p>
           <div class="chart-box short"><canvas id="chart-week"></canvas></div>
         </div>
         <ul id="week-days" class="week-days"></ul>
@@ -225,7 +226,7 @@
 
         <!-- The important chart -->
         <div class="chart-card main">
-          <div class="chart-title">☀️ Morning weight <span class="badge">The one to watch</span></div>
+          <div class="chart-title">☀️ Morning weight</div>
           <p class="hint small">Dots are morning weigh-ins; the line is the weekly average.
             Morning weigh-ins are the most comparable from day to day.</p>
           <div class="chart-box"><canvas id="chart-morning"></canvas></div>
