@@ -15,7 +15,8 @@
   --accent-soft: rgba(47, 111, 237, 0.12);   /* a light wash of the accent, for selected things */
   --danger: #d64545;
   --border: #e4e7ec;
-  --press: rgba(0, 0, 0, 0.06);              /* the tint a row shows while your finger is on it */
+  --press: rgba(0, 0, 0, 0.06);              /* the tint a small button shows while your finger is on it */
+  --card-press: #eef0f3;                     /* a pressed card: solid, so nothing behind it shows through */
   --scrim: rgba(0, 0, 0, 0.3);               /* dims the page behind a sheet */
 
   /* Translucent "material" surfaces (toolbars, sheets): a blurred, see-through
@@ -66,6 +67,7 @@
     --danger: #ff6b6b;
     --border: #2a2e36;
     --press: rgba(255, 255, 255, 0.08);
+    --card-press: #272b33;
     --scrim: rgba(0, 0, 0, 0.5);
     --material-bg: rgba(29, 32, 38, 0.72);
     --material-thick-bg: rgba(29, 32, 38, 0.94);
@@ -103,7 +105,7 @@ button:active { transform: scale(0.97); }
 
 /* Rows and cards you can tap: iOS-style highlight instead of a shrink */
 .tappable { transition: background-color 100ms ease-out; }
-.tappable:active { background-color: var(--press); }
+.tappable:active { background-color: var(--card-press); }
 
 /* Keyboard users get a clear ring; mouse/touch users don't see one */
 :focus-visible {
