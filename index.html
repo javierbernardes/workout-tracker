@@ -563,8 +563,11 @@
     </section>
   </main>
 
-  <!-- Small "Saved ✓" message that pops up at the bottom -->
-  <div id="toast" hidden></div>
+  <!-- Small "Saved ✓" message that rises from the bottom; sometimes with an Undo button -->
+  <div id="toast" class="material-thick" role="status" aria-live="polite" hidden>
+    <span id="toast-text"></span>
+    <button type="button" id="toast-undo" hidden>Undo</button>
+  </div>
 
   <!-- Chart.js: a free charting library, loaded from a public CDN (no install needed) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>

@@ -358,15 +358,33 @@ function isVisible(element) {
   return !element.closest("[hidden]");
 }
 
-// The little "Saved ✓" message at the bottom of the screen
+// The little "Saved ✓" message at the bottom of the screen.
+// It rises from the bottom edge and sinks back the same way. With an "undo"
+// function it also shows an Undo button and stays a bit longer.
 let toastTimer;
-function showToast(message) {
+let toastUndo = null;
+function showToast(message, undo) {
   const toast = document.getElementById("toast");
-  toast.textContent = message;
-  toast.hidden = false;
+  const undoButton = document.getElementById("toast-undo");
+  document.getElementById("toast-text").textContent = message;
+  toastUndo = undo || null;
+  undoButton.hidden = !undo;
+  fluid.show(toast, { y: 24, scale: 0.96 });
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function () { toast.hidden = true; }, 2000);
+  toastTimer = setTimeout(hideToast, undo ? 5000 : 2000);
 }
+
+function hideToast() {
+  clearTimeout(toastTimer);
+  toastUndo = null;
+  fluid.hide(document.getElementById("toast"), { y: 24, scale: 0.96 });
+}
+
+document.getElementById("toast-undo").addEventListener("click", function () {
+  const undo = toastUndo;
+  hideToast();
+  if (undo) undo();
+});
 
 
 // =====================================================
