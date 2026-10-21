@@ -175,28 +175,49 @@ header h1 {
 .account { margin-top: 32px; }
 .account p { margin: 0; }
 
-/* ---------- Tabs ---------- */
+/* ---------- Tabs ----------
+   On computers: a row at the top. A soft pill sits behind the current tab and
+   springs across when you pick another (moved by app.js, so it can be caught
+   mid-way). On phones (further down) the same bar sits at the bottom. */
 nav {
+  position: relative;
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  margin-bottom: var(--sp-4);
+  border-radius: var(--r-lg);
 }
 
 .tab {
-  flex: 1;              /* four equal-width tabs */
-  padding: 10px 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--card);
+  position: relative;        /* above the pill */
+  z-index: 1;
+  flex: 1;                   /* four equal-width tabs */
+  padding: var(--sp-2) 0;
+  border: none;
+  border-radius: var(--r-md);
+  background: none;
   color: var(--muted);
-  font-size: 0.95rem;
+  font: inherit;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
+  font-weight: 500;
   cursor: pointer;
 }
 
-.tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+.tab.active { color: var(--accent); font-weight: 600; }
+.tab:active { transform: none; opacity: 0.6; }   /* press: dim, don't shrink the whole bar */
+
+/* The pill: sized to one tab, moved with transform only (app.js sets its x) */
+.tab-indicator {
+  position: absolute;
+  top: var(--sp-1);
+  bottom: var(--sp-1);
+  left: var(--sp-1);
+  width: calc((100% - 2 * var(--sp-1) - 3 * var(--sp-1)) / 4);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  pointer-events: none;
 }
 
 .tab-icon { display: none; }
@@ -233,9 +254,8 @@ header { padding-top: env(safe-area-inset-top); }
   cursor: pointer;
 }
 
-/* ---------- Sections: only the active one is visible ---------- */
-.section { display: none; }
-.section.active { display: block; }
+/* ---------- Sections: only one is shown (the others carry "hidden") ---------- */
+.section { display: block; }
 
 h2 { font-size: 1.15rem; margin: 8px 0; }
 
@@ -819,7 +839,9 @@ h3 { font-size: 1rem; margin: 20px 0 8px; }
   z-index: 20;              /* above the bottom tabs and morning screens */
 }
 
-/* ---------- Phones: tabs at the bottom, where your thumb is ---------- */
+/* ---------- Phones: tabs at the bottom, where your thumb is ----------
+   A see-through bar the page scrolls under. Where the content meets the bar
+   there's a soft fade instead of a hard line. */
 @media (max-width: 600px) {
   nav {
     position: fixed;
@@ -829,26 +851,42 @@ h3 { font-size: 1rem; margin: 20px 0 8px; }
     z-index: 5;
     max-width: none;
     margin: 0;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));   /* clear of the iPhone home bar */
-    gap: 4px;
-    background: var(--card);
-    border-top: 1px solid var(--border);
+    padding: var(--sp-1) var(--sp-2) calc(var(--sp-1) + env(safe-area-inset-bottom));   /* clear of the iPhone home bar */
+    gap: var(--sp-1);
+    border-radius: 0;
+  }
+
+  /* The scroll-edge fade: a short gradient just above the bar */
+  nav::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: var(--sp-5);
+    background: linear-gradient(to top, var(--bg), transparent);
+    pointer-events: none;
   }
 
   .tab {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 6px 0;
-    border: none;
-    border-radius: 10px;
-    background: none;
-    font-size: 0.75rem;
+    gap: 0.125rem;
+    padding: var(--sp-2) 0 var(--sp-1);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-xs);
+    line-height: var(--lh-xs);
   }
 
-  .tab.active { background: none; color: var(--accent); font-weight: 600; }
-  .tab-icon { display: block; font-size: 1.3rem; line-height: 1; }
+  .tab-icon { display: block; font-size: 1.3rem; line-height: 1; transition: transform 100ms ease-out; }
+  .tab:active .tab-icon { transform: scale(0.9); }
+
+  .tab-indicator {
+    width: calc((100% - 2 * var(--sp-2) - 3 * var(--sp-1)) / 4);
+    left: var(--sp-2);
+    bottom: calc(var(--sp-1) + env(safe-area-inset-bottom));
+  }
 
   main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
   #toast { bottom: calc(84px + env(safe-area-inset-bottom)); }

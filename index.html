@@ -75,8 +75,10 @@
   </header>
 
   <!-- The four main sections. Each "tab" button shows one section. -->
-  <nav>
-    <button class="tab active" data-section="log"><span class="tab-icon">➕</span>Log</button>
+  <nav class="material" aria-label="Main">
+    <!-- The soft pill behind the current tab; app.js springs it to whichever tab you pick -->
+    <span class="tab-indicator" aria-hidden="true"></span>
+    <button class="tab active" data-section="log" aria-current="page"><span class="tab-icon">➕</span>Log</button>
     <button class="tab" data-section="history"><span class="tab-icon">📋</span>History</button>
     <button class="tab" data-section="weight"><span class="tab-icon">📈</span>Progress</button>
     <button class="tab" data-section="profile"><span class="tab-icon">👤</span>Profile</button>
@@ -84,7 +86,7 @@
 
   <main>
     <!-- ============ LOG: where you record a new workout ============ -->
-    <section id="log" class="section active">
+    <section id="log" class="section">
 
       <!-- First you pick the type; data-form says which form it opens -->
       <div id="type-picker">
@@ -370,7 +372,7 @@
     </section>
 
     <!-- ============ HISTORY: list of past workouts ============ -->
-    <section id="history" class="section">
+    <section id="history" class="section" hidden>
       <h2>History</h2>
 
       <!-- Show only one kind of entry (data-filter says which) -->
@@ -385,7 +387,7 @@
     </section>
 
     <!-- ============ WEIGHT: weekly average and chart ============ -->
-    <section id="weight" class="section">
+    <section id="weight" class="section" hidden>
       <!-- Three views; data-view says which one each button shows -->
       <div id="progress-views" class="segmented">
         <button type="button" data-view="view-week">📅 Week</button>
@@ -483,7 +485,7 @@
     </section>
 
     <!-- ============ PROFILE: height, age, sex (for calorie estimates) ============ -->
-    <section id="profile" class="section">
+    <section id="profile" class="section" hidden>
       <!-- Your body details, used to estimate calories (synced like your logs) -->
       <form id="form-profile" class="log-form">
         <h2>Profile</h2>

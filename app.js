@@ -376,26 +376,43 @@ function showToast(message) {
 
 const tabs = document.querySelectorAll(".tab");
 const sections = document.querySelectorAll(".section");
+const tabIndicator = document.querySelector(".tab-indicator");
+
+// Slide the pill behind the chosen tab. It's a spring, so tapping another tab
+// while it's still moving just re-aims it from wherever it is.
+function moveTabIndicator(tab, instantly) {
+  const x = tab.offsetLeft - tabs[0].offsetLeft;
+  const value = fluid.valuesOf(tabIndicator).x;
+  if (instantly) fluid.jump(value, x);
+  else fluid.springTo(value, x);
+}
 
 tabs.forEach(function (tab) {
   tab.addEventListener("click", function () {
     // Which section does this tab point to? (from data-section="...")
     const target = tab.dataset.section;
     if (editing) stopEditing(false);   // leaving a half-done edit cancels it
+    if (tab.classList.contains("active")) { window.scrollTo(0, 0); return; }
     window.scrollTo(0, 0);             // each tab starts at the top
 
     // Un-highlight every tab and hide every section...
-    tabs.forEach(function (t) { t.classList.remove("active"); });
-    sections.forEach(function (s) { s.classList.remove("active"); });
+    tabs.forEach(function (t) { t.classList.remove("active"); t.removeAttribute("aria-current"); });
+    sections.forEach(function (s) { s.hidden = true; });
 
     // ...then highlight the clicked tab and show its section.
     tab.classList.add("active");
-    document.getElementById(target).classList.add("active");
-
+    tab.setAttribute("aria-current", "page");
+    moveTabIndicator(tab);
     if (target === "history") renderHistory();
     if (target === "weight") renderProgress();
+    // The old section is gone at once (no waiting); the new one fades in with a small rise
+    fluid.show(document.getElementById(target), { y: 8 }, { duration: 0.25 });
   });
 });
+
+// Put the pill in place on load, and keep it right if the window changes size
+moveTabIndicator(document.querySelector(".tab.active"), true);
+window.addEventListener("resize", function () { moveTabIndicator(document.querySelector(".tab.active"), true); });
 
 
 // =====================================================
