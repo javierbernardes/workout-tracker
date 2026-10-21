@@ -894,9 +894,11 @@ function currentWorkoutEntries() {
 // Show either the "Start" button or the running workout with its exercises
 function renderCurrentWorkout() {
   const workout = getActiveWorkout();
+  const box = document.getElementById("current-workout");
   document.getElementById("no-workout").hidden = !!workout;
-  document.getElementById("current-workout").hidden = !workout;
-  if (!workout) return;
+  if (!workout) { box.hidden = true; return; }
+  // The card grows up out of where the Start button was (only when it first appears)
+  if (box.hidden) fluid.show(box, { y: 12, scale: 0.97 });
   updateWorkoutTimer();   // show the right time straight away, not after a second
 
   const list = document.getElementById("workout-items");
@@ -1036,7 +1038,10 @@ function addSetRow(reps, weight) {
     }
   });
 
+  // New rows appear with a small rise (unless the form is being filled in all at once)
+  row.hidden = true;
   setsBox.appendChild(row);
+  fluid.show(row, { y: 8 }, { duration: 0.25 });
   renumberSets();
 }
 
@@ -1069,8 +1074,8 @@ function lastEntry(match) {
 // Show (or hide) the "Last time: … [Use these]" bar of a form
 function showLastTime(kind, entry, text, useIt) {
   const box = document.querySelector('.last-time[data-for="' + kind + '"]');
-  box.hidden = !entry || !!editing;
-  if (box.hidden) return;
+  if (!entry || editing) { fluid.hide(box, { y: -6 }); return; }
+  fluid.show(box, { y: -6 }, { duration: 0.25 });
   box.innerHTML = "";
   const what = document.createElement("span");
   what.textContent = "Last time (" + dayLabel(entry.date).replace(/, \d{4}$/, "") + "): " + text;

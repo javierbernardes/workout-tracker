@@ -170,11 +170,22 @@ header {
 }
 
 header h1 {
-  font-size: 1.4rem;
-  margin: 24px 0 16px;
+  font-size: var(--fs-xl);
+  letter-spacing: var(--ls-xl);
+  line-height: var(--lh-xl);
+  margin: var(--sp-6) 0 var(--sp-4);
 }
 
-.account { margin-top: 32px; }
+/* Profile: each part (details, notification, account) is its own card */
+#profile .log-form {
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+
+#profile .log-form h2 { margin-top: 0; }
 .account p { margin: 0; }
 
 /* ---------- Tabs ----------
@@ -233,12 +244,13 @@ header { padding-top: env(safe-area-inset-top); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--card);
-  border: 1px dashed var(--accent);
-  font-size: 0.9rem;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
 }
 
 .last-time[hidden] { display: none; }
@@ -259,7 +271,12 @@ header { padding-top: env(safe-area-inset-top); }
 /* ---------- Sections: only one is shown (the others carry "hidden") ---------- */
 .section { display: block; }
 
-h2 { font-size: 1.15rem; margin: 8px 0; }
+h2 {
+  font-size: var(--fs-lg);
+  letter-spacing: var(--ls-lg);
+  line-height: var(--lh-lg);
+  margin: var(--sp-2) 0;
+}
 
 .hint { color: var(--muted); }
 
@@ -267,20 +284,27 @@ h2 { font-size: 1.15rem; margin: 8px 0; }
 .type-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .type-btn {
-  padding: 24px 8px;
+  padding: var(--sp-6) var(--sp-2);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   background: var(--card);
   color: var(--text);
-  font-size: 1.05rem;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 500;
   cursor: pointer;
 }
 
-.type-btn:hover { border-color: var(--accent); }
+/* Hover only where there's a mouse: on touch screens a "hover" would stick after a tap */
+@media (hover: hover) {
+  .type-btn:hover { border-color: var(--accent); }
+  .entry.tappable:hover { border-color: var(--accent); }
+  .sub-list li.tappable:hover { color: var(--accent); }
+}
 
 /* Anything marked "hidden" stays hidden, whatever other rules say */
 [hidden] { display: none !important; }
@@ -357,33 +381,35 @@ input:focus, select:focus {
 }
 
 .secondary {
-  padding: 10px;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
   background: none;
   color: var(--accent);
   font: inherit;
+  font-weight: 500;
   cursor: pointer;
 }
 
 /* ---------- Weights: set rows ---------- */
 .sets-header, .set-row {
   display: grid;
-  grid-template-columns: 32px 1fr 1fr 36px;
-  gap: 8px;
+  grid-template-columns: 2rem 1fr 1fr var(--tap);
+  gap: var(--sp-2);
   align-items: center;
 }
 
 .sets-header {
-  margin-bottom: -6px;
-  font-size: 0.8rem;
+  margin-bottom: calc(-1 * var(--sp-2));
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-xs);
   color: var(--muted);
 }
 
 #sets {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .set-number {
@@ -391,13 +417,21 @@ input:focus, select:focus {
   color: var(--muted);
 }
 
+/* The small × buttons: quiet, but a full 44px to tap */
 .remove-set, .delete {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
   border: none;
+  border-radius: 999px;
   background: none;
   color: var(--muted);
   font-size: 1.3rem;
+  line-height: 1;
   cursor: pointer;
 }
+
+.remove-set:active, .delete:active { transform: none; background: var(--press); }
 
 /* ---------- History ---------- */
 #history-list {
@@ -413,17 +447,19 @@ input:focus, select:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--card);
 }
 
 /* "Today", "Yesterday", "Mon, Oct 19" above each day's entries */
 .day-heading {
-  margin: 12px 0 0;
-  font-size: 0.85rem;
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
   font-weight: 600;
   color: var(--muted);
 }
@@ -432,15 +468,19 @@ input:focus, select:focus {
 
 .small {
   margin-top: 2px;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
 }
 
 /* Exercises listed inside a workout in History */
 .sub-list {
-  margin: 8px 0 0;
+  margin: var(--sp-2) 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
   color: var(--muted);
 }
 
@@ -448,9 +488,6 @@ input:focus, select:focus {
 
 /* Things you can tap to edit */
 .tappable { cursor: pointer; }
-.entry.tappable:hover { border-color: var(--accent); }
-.sub-list li.tappable:hover { color: var(--accent); }
-
 /* ---------- Swipe to delete ----------
    A row is a clipped box with a red Delete button behind the card. Dragging the
    card left (app.js moves it with transform) reveals the button; it can't be
@@ -492,14 +529,16 @@ input:focus, select:focus {
 /* ---------- The workout you're in the middle of ---------- */
 #type-picker > .hint { margin-top: 20px; }
 
+/* Lifted a little above the page (a shadow), so it reads as the thing in progress */
 .workout-box {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--accent);
-  border-radius: 14px;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
   background: var(--card);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.1);
 }
 
 .workout-title {
@@ -647,8 +686,15 @@ input:focus, select:focus {
   background: var(--card);
 }
 
-.today-label { font-size: 0.85rem; color: var(--muted); }
-.today-value { font-size: 2rem; font-weight: 700; margin: 2px 0; }
+.today-label { font-size: var(--fs-sm); letter-spacing: var(--ls-sm); color: var(--muted); }
+.today-value {
+  font-size: var(--fs-3xl);
+  letter-spacing: var(--ls-3xl);
+  line-height: var(--lh-3xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0;
+}
 
 .today-wake {
   display: flex;
@@ -764,7 +810,14 @@ input:focus, select:focus {
 }
 
 .week-nav h2 { margin: 0; }
-.week-nav button { padding: 6px 0; font-size: 1.2rem; }
+.week-nav button {
+  min-height: var(--tap);
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 1.2rem;
+}
 .week-nav button:disabled { opacity: 0.3; cursor: default; }
 
 /* Small number tiles, two per row */
@@ -878,7 +931,12 @@ label.field {
 .chart-box { position: relative; height: 260px; }
 .chart-box.short { height: 160px; margin-top: 8px; }
 
-h3 { font-size: 1rem; margin: 20px 0 8px; }
+h3 { font-size: var(--fs-md); margin: var(--sp-5) 0 var(--sp-2); }
+
+/* Theme changes ease instead of snapping (not under reduced motion) */
+@media (prefers-reduced-motion: no-preference) {
+  body { transition: background-color 300ms ease, color 300ms ease; }
+}
 
 #weekly-table {
   width: 100%;
