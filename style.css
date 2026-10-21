@@ -419,6 +419,7 @@ input::-webkit-date-and-time-value { text-align: left; }
   justify-content: center;
   gap: var(--sp-2);
   aspect-ratio: 1;
+  min-width: 0;             /* a tall square must not force itself wider than its column */
   padding: var(--sp-2);
   font-size: var(--fs-sm);
   letter-spacing: var(--ls-sm);
