@@ -226,7 +226,7 @@ const fluid = (function () {
 
     // While dragging, the browser must not treat it as a click afterwards
     el.addEventListener("click", function (e) {
-      if (el._fluidSwallowClick) { e.stopPropagation(); e.preventDefault(); el._fluidSwallowClick = false; }
+      if (el._fluidSwallowClick) { e.stopImmediatePropagation(); e.preventDefault(); el._fluidSwallowClick = false; }
     }, true);
 
     function info(a, dx, dy, vx, vy) {

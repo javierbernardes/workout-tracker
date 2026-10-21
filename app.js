@@ -386,6 +386,82 @@ document.getElementById("toast-undo").addEventListener("click", function () {
   if (undo) undo();
 });
 
+// Delete straight away, with an Undo in the toast instead of an "Are you sure?"
+// question. Undo puts the very same entries back (same ids, same created time).
+function deleteWithUndo(entries, what, afterwards) {
+  entries.forEach(function (e) { deleteEntry(e.id); });
+  afterwards();
+  showToast("Deleted " + what, function () {
+    entries.forEach(function (e) { recordChange({ op: "add", entry: e }); });
+    afterwards();
+  });
+}
+
+// Turn a list row into a "swipe left to reveal a red button" row.
+// The row's current contents become the card that slides; the button sits behind it.
+//   - The card follows the finger 1:1 and rubber-bands past both ends.
+//   - On release, a clear flick decides by direction; otherwise we project where
+//     the movement would stop and snap to the nearer end, carrying the speed.
+//   - Only one row is open at a time; tapping an open card closes it.
+let openSwipeRow = null;
+function swipeRow(row, label, onAction) {
+  const card = document.createElement("div");
+  card.className = "swipe-card " + row.className;
+  while (row.firstChild) card.appendChild(row.firstChild);
+  row.className = "swipe-row";
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "swipe-action";
+  action.textContent = label;
+  action.tabIndex = -1;             // keyboards use the × instead
+  action.addEventListener("click", function (event) {
+    event.stopPropagation();
+    onAction();
+  });
+  row.append(action, card);
+
+  const x = fluid.valuesOf(card).x;
+  const width = function () { return action.getBoundingClientRect().width; };
+  let base = 0;
+
+  function settle(target, velocity) {
+    openSwipeRow = target < 0 ? row : (openSwipeRow === row ? null : openSwipeRow);
+    return fluid.springTo(x, target, Object.assign({}, fluid.SPRING.momentum, { velocity: velocity || 0 }));
+  }
+  row.close = function () { settle(0, 0); };
+
+  fluid.pointerDrag(card, {
+    axis: "x",
+    onStart: function () {
+      if (openSwipeRow && openSwipeRow !== row) openSwipeRow.close();
+      x.stop();
+      base = x.get();
+      card.style.willChange = "transform";
+    },
+    onMove: function (info) {
+      const w = width();
+      let pos = base + info.dx;
+      if (pos > 0) pos = fluid.rubberband(pos, w);                 // nothing to the right
+      else if (pos < -w) pos = -w + fluid.rubberband(pos + w, w);  // no further than the button
+      fluid.jump(x, pos);
+    },
+    onEnd: function (info) {
+      card.style.willChange = "";
+      const w = width();
+      let target;
+      if (Math.abs(info.vx) > 400) target = info.vx < 0 ? -w : 0;
+      else target = fluid.nearest([-w, 0], x.get() + fluid.project(info.vx));
+      settle(target, info.vx);
+    }
+  });
+
+  // Tapping an open card just closes it
+  card.addEventListener("click", function (event) {
+    if (x.get() < -1) { event.stopPropagation(); settle(0, 0); }
+  }, true);
+}
+
 
 // =====================================================
 //  3. TABS
@@ -839,14 +915,12 @@ function renderCurrentWorkout() {
     const remove = document.createElement("button");
     remove.className = "delete";
     remove.title = "Remove";
+    remove.setAttribute("aria-label", "Remove " + describe(e));
     remove.textContent = "×";
-    remove.addEventListener("click", function () {
-      if (confirm("Remove this exercise?")) {
-        deleteEntry(e.id);
-        renderCurrentWorkout();
-      }
-    });
+    const removeIt = function () { deleteWithUndo([e], "exercise", renderCurrentWorkout); };
+    remove.addEventListener("click", removeIt);
     item.append(text, remove);
+    swipeRow(item, "Remove", removeIt);
     list.appendChild(item);
   });
 }
@@ -1433,17 +1507,12 @@ function renderHistory() {
     const remove = document.createElement("button");
     remove.className = "delete";
     remove.title = "Delete";
+    remove.setAttribute("aria-label", "Delete " + describe(e));
     remove.textContent = "×";
-    remove.addEventListener("click", function () {
-      const question = e.type === "workout"
-        ? "Delete this workout and all its exercises?"
-        : "Delete this entry?";
-      if (confirm(question)) {
-        children.forEach(function (c) { deleteEntry(c.id); });
-        deleteEntry(e.id);
-        renderHistory();
-      }
-    });
+    // A workout takes its exercises with it; Undo brings them all back
+    const what = e.type === "workout" ? "workout" : "entry";
+    const removeIt = function () { deleteWithUndo(children.concat([e]), what, renderHistory); };
+    remove.addEventListener("click", function (event) { event.stopPropagation(); removeIt(); });
 
     // Tapping the entry (anywhere but ×) opens it for editing
     item.classList.add("tappable");
@@ -1452,6 +1521,7 @@ function renderHistory() {
     });
 
     item.append(text, remove);
+    swipeRow(item, "Delete", removeIt);
     list.appendChild(item);
   });
 }

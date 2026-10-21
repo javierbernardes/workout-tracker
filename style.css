@@ -451,6 +451,44 @@ input:focus, select:focus {
 .entry.tappable:hover { border-color: var(--accent); }
 .sub-list li.tappable:hover { color: var(--accent); }
 
+/* ---------- Swipe to delete ----------
+   A row is a clipped box with a red Delete button behind the card. Dragging the
+   card left (app.js moves it with transform) reveals the button; it can't be
+   dragged further than the button, only rubber-banded. */
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-md);
+}
+
+.swipe-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5.5rem;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  font: inherit;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.swipe-action:active { transform: none; opacity: 0.8; }
+
+.swipe-card {
+  position: relative;
+  touch-action: pan-y;        /* up/down still scrolls the page; left/right is ours */
+}
+
+/* On touch screens the swipe replaces the small × (hidden there); with a mouse, × stays */
+@media (hover: none) {
+  .swipe-row .delete { display: none; }
+}
+
 /* ---------- The workout you're in the middle of ---------- */
 #type-picker > .hint { margin-top: 20px; }
 
@@ -481,13 +519,17 @@ input:focus, select:focus {
   list-style: none;
 }
 
-#workout-items li {
+#workout-items li { border-bottom: 1px solid var(--border); border-radius: 0; }
+
+/* The sliding part of each exercise line (see swipeRow in app.js) */
+#workout-items .swipe-card,
+#workout-items li.hint {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  background: var(--card);
 }
 
 .danger-link {
