@@ -347,8 +347,21 @@ input:focus, select:focus {
 .row {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 12px;
+  gap: var(--sp-3);
 }
+
+/* Date next to Time: both need the same room (a time box can't get narrow) */
+.row:has(input[type="time"]) { grid-template-columns: 1fr 1fr; }
+
+/* iPhone draws date/time boxes at a fixed built-in width unless told otherwise,
+   which made them overlap. This lets them shrink to their column. */
+input[type="date"], input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-height: 2.75rem;
+}
+input::-webkit-date-and-time-value { text-align: left; }
 
 .log-form label.check {
   flex-direction: row;
