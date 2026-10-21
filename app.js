@@ -437,20 +437,184 @@ window.addEventListener("resize", function () { moveTabIndicator(document.queryS
 //  4. OPENING AND CLOSING THE FORMS
 // =====================================================
 
-const picker = document.getElementById("type-picker");
-const forms = document.querySelectorAll("#log form.log-form");
+// The forms live in a "sheet": a panel that slides up from the bottom of the
+// screen over whatever you're looking at. You close it with Cancel, by saving,
+// by tapping the dim area, with Escape, or by dragging it down.
+//
+// makeSheet() builds that behavior once, for both the form sheet and the small
+// question sheet. How the drag works, in plain words:
+//   - While your finger is down, the sheet follows it exactly (1:1). Pulling it
+//     higher than its resting place meets growing resistance (rubber-band).
+//   - When you let go, we look at how fast you were moving. A clear flick decides
+//     (down = close, up = stay); otherwise we project where the movement would
+//     stop and pick whichever is nearer. The spring then continues at your
+//     finger's speed, so there's no visible seam between dragging and animating.
+//   - Everything starts from where the sheet is right now, so you can grab it
+//     mid-animation and reverse it.
+function makeSheet(sheet, scrim, options) {
+  const values = fluid.valuesOf(sheet);
+  const scrimValues = fluid.valuesOf(scrim);
+  let open = false;
+  let lastFocus = null;
+  let anims = [];
+
+  // How far down is "closed"? (its own height, plus a little, so the shadow goes too)
+  function closedY() { return sheet.getBoundingClientRect().height + 40; }
+
+  function stopAnims() {
+    anims.forEach(function (a) { a.stop(); });
+    anims = [];
+  }
+
+  // Spring the sheet to y, carrying the given speed; closing also hides it at the end
+  function settle(y, velocity, closing) {
+    stopAnims();
+    const opts = Object.assign({}, fluid.SPRING.momentum, { velocity: velocity || 0 });
+    sheet.style.willChange = "transform";
+    anims = [
+      fluid.springTo(values.y, y, opts),
+      fluid.springTo(scrimValues.opacity, closing ? 0 : 1, opts)
+    ];
+    const mine = anims;
+    return Promise.all(mine).then(function () {
+      if (anims !== mine) return;          // something else took over meanwhile
+      sheet.style.willChange = "";
+      if (closing) { sheet.hidden = true; scrim.hidden = true; values.y.jump(0); }
+    });
+  }
+
+  function show() {
+    if (open) return;
+    open = true;
+    lastFocus = document.activeElement;
+    document.body.classList.add("sheet-open");
+    scrim.hidden = false;
+    sheet.hidden = false;
+    sheet.scrollTop = 0;
+    if (fluid.reduced()) {
+      // Less motion: a plain fade, no slide
+      values.y.jump(0);
+      scrimValues.opacity.jump(0);
+      fluid.springTo(scrimValues.opacity, 1);
+      fluid.show(sheet);
+    } else {
+      // Only start from the bottom if it isn't already on its way somewhere
+      if (!values.y.isAnimating() && values.y.get() === 0) {
+        values.y.jump(closedY());
+        scrimValues.opacity.jump(0);
+      }
+      settle(0, 0, false);
+    }
+    sheet.focus({ preventScroll: true });
+  }
+
+  function hide(velocity) {
+    if (!open) return;
+    open = false;
+    document.body.classList.remove("sheet-open");
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+    if (fluid.reduced()) {
+      fluid.springTo(scrimValues.opacity, 0);
+      fluid.hide(sheet).then(function () { scrim.hidden = true; });
+    } else {
+      settle(closedY(), velocity || 0, true);
+    }
+    if (options.onClose) options.onClose();
+  }
+
+  // Tapping the dim area or pressing Escape closes it
+  scrim.addEventListener("click", function () { hide(); });
+  sheet.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { e.preventDefault(); hide(); }
+  });
+
+  // Dragging it down
+  let dragBase = 0;       // where the sheet was when the finger landed
+  let dragIgnored = false;
+  fluid.pointerDrag(sheet, {
+    axis: "y",
+    canStart: function (e) {
+      // Typing or picking in a field is not a drag
+      return !e.target.closest("input, select, textarea");
+    },
+    onStart: function (info) {
+      // If the form is scrolled, or you push up on a form that can scroll, that's
+      // scrolling, not dragging. (A short form pushed up just rubber-bands.)
+      const body = sheet.querySelector(".sheet-body") || sheet;
+      const canScroll = body.scrollHeight > body.clientHeight + 1;
+      dragIgnored = body.scrollTop > 0 || (info.dy < 0 && canScroll);
+      if (dragIgnored) return;
+      stopAnims();
+      dragBase = values.y.get();
+      sheet.style.willChange = "transform";
+    },
+    onMove: function (info) {
+      if (dragIgnored) return;
+      let y = dragBase + info.dy;
+      // Above its resting place: resist more and more (there's nothing up there)
+      if (y < 0) y = fluid.rubberband(y, sheet.getBoundingClientRect().height);
+      fluid.jump(values.y, y);
+      fluid.jump(scrimValues.opacity, Math.max(0, 1 - y / closedY()));
+    },
+    onEnd: function (info) {
+      if (dragIgnored) return;
+      const y = values.y.get();
+      const vy = info.vy;
+      let close;
+      if (Math.abs(vy) > 400) close = vy > 0;                   // a clear flick: its direction decides
+      else close = fluid.nearest([0, closedY()], y + fluid.project(vy)) !== 0;   // otherwise: where would it stop?
+      if (close) hide(vy);
+      else settle(0, vy, false);
+    }
+  });
+
+  return { show: show, hide: hide, isOpen: function () { return open; } };
+}
+
+const forms = document.querySelectorAll("#sheet form.log-form");
+const formSheet = makeSheet(document.getElementById("sheet"), document.getElementById("sheet-scrim"), {
+  onClose: function () {
+    if (editing) stopEditing(true);     // dragged away mid-edit: cancel the edit
+    renderCurrentWorkout();
+  }
+});
 
 function openForm(formId) {
-  picker.hidden = true;
   forms.forEach(function (form) { form.hidden = form.id !== formId; });
   resetForm(document.getElementById(formId));
+  formSheet.show();
 }
 
 function closeForms() {
-  forms.forEach(function (form) { form.hidden = true; });
-  picker.hidden = false;
-  renderCurrentWorkout();
+  formSheet.hide();
 }
+
+// A yes/no question for the two actions that can't be undone. Returns a promise
+// that becomes true if you confirm. Replaces the browser's confirm() box.
+const actionSheet = makeSheet(document.getElementById("action-sheet"), document.getElementById("action-scrim"), {
+  onClose: function () { if (actionResolve) { actionResolve(false); actionResolve = null; } }
+});
+let actionResolve = null;
+
+function askConfirm(title, message, confirmLabel, destructive) {
+  document.getElementById("action-title").textContent = title;
+  document.getElementById("action-message").textContent = message || "";
+  const button = document.getElementById("action-confirm");
+  button.textContent = confirmLabel;
+  button.classList.toggle("danger", !!destructive);
+  return new Promise(function (resolve) {
+    actionResolve = resolve;
+    actionSheet.show();
+  });
+}
+
+document.getElementById("action-confirm").addEventListener("click", function () {
+  const resolve = actionResolve;
+  actionResolve = null;
+  actionSheet.hide();
+  if (resolve) resolve(true);
+});
+document.getElementById("action-cancel").addEventListener("click", function () { actionSheet.hide(); });
 
 // Any button with data-form="..." opens that form
 document.querySelectorAll("#type-picker [data-form]").forEach(function (button) {
@@ -483,7 +647,6 @@ const EDIT_TITLES = {
 
 function editEntry(e) {
   if (!FORM_FOR[e.type]) return;
-  document.querySelector('.tab[data-section="log"]').click();   // the forms live on the Log tab
   editing = e;
   const form = document.getElementById(FORM_FOR[e.type]);
   openForm(form.id);
@@ -497,19 +660,19 @@ function editEntry(e) {
   title.textContent = "✏️ " + EDIT_TITLES[e.type];
   save.textContent = "Save changes";
   document.getElementById("discard-workout").hidden = true;
-  window.scrollTo(0, 0);
 }
 
-// Leave editing mode; backToHistory = show the History tab again
-function stopEditing(backToHistory) {
+// Leave editing mode. The sheet closes over the list you came from, which
+// is refreshed so the change shows straight away.
+function stopEditing(refreshHistory) {
   editing = null;
-  document.querySelectorAll("#log form h2[data-normal]").forEach(function (h) { h.textContent = h.dataset.normal; });
-  document.querySelectorAll('#log form button[type="submit"][data-normal]').forEach(function (b) {
+  document.querySelectorAll("#sheet form h2[data-normal]").forEach(function (h) { h.textContent = h.dataset.normal; });
+  document.querySelectorAll('#sheet form button[type="submit"][data-normal]').forEach(function (b) {
     b.textContent = b.dataset.normal;
   });
   document.getElementById("discard-workout").hidden = false;
   closeForms();
-  if (backToHistory) document.querySelector('.tab[data-section="history"]').click();
+  if (refreshHistory) renderHistory();
 }
 
 // Save the edited version: same id, owner and creation time; everything else from the form
@@ -729,10 +892,15 @@ document.getElementById("form-finish").addEventListener("submit", function (even
 });
 
 document.getElementById("discard-workout").addEventListener("click", function () {
-  if (!confirm("Discard this workout and all its exercises?")) return;
-  currentWorkoutEntries().forEach(function (e) { deleteEntry(e.id); });
-  setActiveWorkout(null);
-  closeForms();
+  const count = currentWorkoutEntries().length;
+  askConfirm("Discard this workout?",
+             count ? "Its " + count + " exercise" + (count === 1 ? "" : "s") + " will be deleted too." : "",
+             "Discard workout", true).then(function (ok) {
+    if (!ok) return;
+    currentWorkoutEntries().forEach(function (e) { deleteEntry(e.id); });
+    setActiveWorkout(null);
+    closeForms();
+  });
 });
 
 
@@ -2420,12 +2588,14 @@ signInForm.addEventListener("submit", async function (event) {
 
 document.getElementById("sign-out").addEventListener("click", function () {
   const waiting = loadOutbox().length;
-  const question = waiting
-    ? waiting + " change(s) haven't been sent yet and will be lost. Sign out anyway?"
-    : "Sign out? Your logs stay saved online.";
-  if (!confirm(question)) return;
-  signOut();
-  renderAccount();
+  const message = waiting
+    ? waiting + " change(s) haven't been sent yet and will be lost."
+    : "Your logs stay saved online.";
+  askConfirm("Sign out?", message, "Sign out", waiting > 0).then(function (ok) {
+    if (!ok) return;
+    signOut();
+    renderAccount();
+  });
 });
 
 // Settings from the Google Sheets version, no longer used

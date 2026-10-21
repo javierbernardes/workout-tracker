@@ -21,6 +21,7 @@
   /* Translucent "material" surfaces (toolbars, sheets): a blurred, see-through
      background with a bright top edge, like light catching glass. */
   --material-bg: rgba(255, 255, 255, 0.72);
+  --material-thick-bg: rgba(246, 247, 249, 0.92);   /* big surfaces are nearly solid: text must stay readable */
   --material-edge: rgba(255, 255, 255, 0.7);
   --material-blur: 20px;
   --shadow-thin: 0 1px 2px rgba(16, 24, 40, 0.06);
@@ -67,6 +68,7 @@
     --press: rgba(255, 255, 255, 0.08);
     --scrim: rgba(0, 0, 0, 0.5);
     --material-bg: rgba(29, 32, 38, 0.72);
+    --material-thick-bg: rgba(29, 32, 38, 0.94);
     --material-edge: rgba(255, 255, 255, 0.08);
     --shadow-thin: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-thick: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -120,7 +122,7 @@ button:active { transform: scale(0.97); }
 
 /* Bigger surfaces read as thicker: stronger blur, deeper shadow */
 .material-thick {
-  background: var(--material-bg);
+  background: var(--material-thick-bg);
   -webkit-backdrop-filter: blur(calc(var(--material-blur) * 2)) saturate(180%);
   backdrop-filter: blur(calc(var(--material-blur) * 2)) saturate(180%);
   box-shadow: inset 0 1px 0 var(--material-edge), var(--shadow-thick);
@@ -823,6 +825,72 @@ h3 { font-size: 1rem; margin: 20px 0 8px; }
 /* The pee/poop notes line under each week: tucked under its row */
 #weekly-table tr:has(+ .week-notes) td { border-bottom: none; padding-bottom: 2px; }
 #weekly-table .week-notes td { padding-top: 0; font-size: 0.8rem; color: var(--muted); }
+
+/* ---------- The sheet (forms slide up in it) and the question sheet ---------- */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: var(--scrim);
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 16;
+  max-width: 600px;
+  max-height: calc(100dvh - 3rem - env(safe-area-inset-top));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  overscroll-behavior: contain;
+  touch-action: pan-y;        /* the form can still scroll; app.js handles the drag */
+}
+
+.sheet:focus { outline: none; }
+
+/* The little handle at the top: a hint that it can be dragged */
+.sheet-grabber {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 0.3rem;
+  margin: var(--sp-2) auto var(--sp-1);
+  border-radius: 999px;
+  background: var(--muted);
+  opacity: 0.4;
+}
+
+/* The scrolling part */
+.sheet-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sp-2) var(--sp-4) var(--sp-5);
+}
+
+.sheet-body form { padding-bottom: var(--sp-2); }
+
+/* The question sheet: title, one line of explanation, two stacked buttons */
+.action-sheet {
+  padding: 0 var(--sp-4) var(--sp-4);
+  gap: var(--sp-3);
+}
+
+.action-sheet h2 {
+  margin: var(--sp-2) 0 0;
+  text-align: center;
+}
+
+.action-sheet .hint { margin: 0; text-align: center; }
+.action-sheet .secondary { border-style: solid; }
+
+.save.danger { background: var(--danger); }
+
+/* The page behind a sheet doesn't scroll */
+body.sheet-open { overflow: hidden; }
 
 /* ---------- "Saved ✓" message ----------
    Centered with margins (not with transform), so fluid.js is free to move it. */

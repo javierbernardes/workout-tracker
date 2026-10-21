@@ -182,6 +182,11 @@ const fluid = (function () {
         target: e.target
       };
       remember(active, e);
+      // Keep receiving moves even when the pointer leaves the element. (Not when
+      // it landed on a button or field: capturing there would redirect its click.)
+      if (!e.target.closest("button, a, input, select, textarea, label, summary")) {
+        el.setPointerCapture(e.pointerId);
+      }
     });
 
     el.addEventListener("pointermove", function (e) {
@@ -211,7 +216,9 @@ const fluid = (function () {
       if (!a.dragging) return;
       const dx = e.clientX - a.startX;
       const dy = e.clientY - a.startY;
-      const vel = velocity(a.history);
+      // If the finger paused before lifting, it wasn't a flick: speed is zero
+      const paused = performance.now() - a.history[a.history.length - 1].t > 100;
+      const vel = paused ? { vx: 0, vy: 0 } : velocity(a.history);
       if (options.onEnd) options.onEnd(info(a, dx, dy, vel.vx, vel.vy));
     }
     el.addEventListener("pointerup", finish);
