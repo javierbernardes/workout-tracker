@@ -722,7 +722,7 @@ input::-webkit-date-and-time-value { text-align: left; }
   line-height: var(--lh-2xl);
 }
 .morning-step p { margin: 0; }
-.morning-emoji { font-size: 4rem; line-height: 1; }
+.morning-icon { line-height: 1; }
 
 .big-button {
   width: 100%;
@@ -787,7 +787,40 @@ input::-webkit-date-and-time-value { text-align: left; }
 .pill input { width: auto; }
 .pill:has(input:checked) { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
-/* ---------- Today box (top of the Log tab): a full-width blue band ---------- */
+/* ---------- Line icons (icons.js) ---------- */
+.icon {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.28em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-wrap { display: inline-block; }
+.tab-icon .icon { width: 1.5rem; height: 1.5rem; vertical-align: 0; }
+.hero-icon .icon { width: 2.75rem; height: 2.75rem; vertical-align: 0; color: var(--accent); }
+.square-icon .icon { width: 1.75rem; height: 1.75rem; vertical-align: 0; }
+.squares:not(.three) .square-icon .icon { width: 2.25rem; height: 2.25rem; }
+.morning-icon .icon { width: 4rem; height: 4rem; stroke-width: 1.5; color: var(--accent); }
+.today-label .icon { color: #ffd166; }
+
+/* One colour per muscle group: a soft wash on the square and a coloured icon */
+.square.g-chest { --g: 47, 111, 237; }
+.square.g-back { --g: 20, 150, 140; }
+.square.g-arms { --g: 235, 120, 40; }
+.square.g-legs { --g: 60, 160, 80; }
+.square.g-abs { --g: 220, 70, 90; }
+.square.g-other { --g: 130, 90, 220; }
+.square[class*="g-"] {
+  background: linear-gradient(165deg, var(--card) 35%, rgba(var(--g), 0.18));
+  border-color: rgba(var(--g), 0.25);
+}
+.square[class*="g-"] .square-icon { color: rgb(var(--g)); }
+
+/* ---------- Today box (top of the Log tab): a blue card ---------- */
 .today-box {
   padding: var(--sp-5) var(--sp-4);
   margin-bottom: var(--sp-4);
@@ -1226,11 +1259,5 @@ body.sheet-open { overflow: hidden; }
 
   main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 
-  /* On phones the band runs edge to edge */
-  .today-box {
-    margin: 0 calc(-1 * var(--sp-4)) var(--sp-4);
-    padding: var(--sp-5) var(--sp-4) var(--sp-5);
-    border-radius: 0 0 var(--r-xl) var(--r-xl);
-  }
   #toast { bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
 }

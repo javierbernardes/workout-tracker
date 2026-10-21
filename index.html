@@ -25,7 +25,7 @@
 
     <!-- Step 1: wake-up time -->
     <div id="morning-wake" class="morning-step" hidden>
-      <div class="morning-emoji">☀️</div>
+      <div class="morning-icon" data-icon="sun"></div>
       <h1>Good morning!</h1>
       <p class="hint">What time did you wake up today?</p>
 
@@ -45,7 +45,7 @@
 
     <!-- Step 2: the morning weigh-in -->
     <div id="morning-weigh" class="morning-step" hidden>
-      <div class="morning-emoji">⚖️</div>
+      <div class="morning-icon" data-icon="scale"></div>
       <h1>Daily morning weigh-in</h1>
       <p class="hint">Right after waking up, before eating or drinking, is the most comparable.</p>
 
@@ -78,10 +78,10 @@
   <nav class="material" aria-label="Main">
     <!-- The soft pill behind the current tab; app.js springs it to whichever tab you pick -->
     <span class="tab-indicator" aria-hidden="true"></span>
-    <button class="tab active" data-section="log" aria-current="page"><span class="tab-icon">➕</span>Log</button>
-    <button class="tab" data-section="history"><span class="tab-icon">📋</span>History</button>
-    <button class="tab" data-section="weight"><span class="tab-icon">📈</span>Progress</button>
-    <button class="tab" data-section="profile"><span class="tab-icon">👤</span>Profile</button>
+    <button class="tab active" data-section="log" aria-current="page"><span class="tab-icon" data-icon="plus"></span>Log</button>
+    <button class="tab" data-section="history"><span class="tab-icon" data-icon="list"></span>History</button>
+    <button class="tab" data-section="weight"><span class="tab-icon" data-icon="chart"></span>Progress</button>
+    <button class="tab" data-section="profile"><span class="tab-icon" data-icon="user"></span>Profile</button>
   </nav>
 
   <main>
@@ -92,11 +92,11 @@
       <div id="type-picker">
         <!-- TODAY: estimated calories burned so far (filled in by app.js, every minute) -->
         <div id="today-box" class="today-box">
-          <div class="today-label">🔥 Burned today so far</div>
+          <div class="today-label"><span data-icon="flame"></span> Burned today so far</div>
           <div class="today-value" id="today-kcal">–</div>
           <div class="hint small" id="today-split"></div>
           <div class="today-wake">
-            <span id="today-wake-text"></span>
+            <span data-icon="sun"></span> <span id="today-wake-text"></span>
             <label class="link-button">change
               <input type="time" id="wake-time" class="hidden-input">
             </label>
@@ -106,7 +106,7 @@
         <!-- No workout running: the big Start card -->
         <div id="no-workout">
           <button type="button" id="start-workout" class="hero">
-            <span class="hero-icon">💪</span>
+            <span class="hero-icon" data-icon="dumbbell"></span>
             <span class="hero-title">Start a workout</span>
             <span class="hero-hint">Weights and cardio, one exercise at a time</span>
           </button>
@@ -114,15 +114,15 @@
 
         <!-- Workout running: a banner that opens the workout screen -->
         <button type="button" id="current-workout" class="hero running" hidden>
-          <span class="hero-icon">💪</span>
+          <span class="hero-icon" data-icon="dumbbell"></span>
           <span class="hero-title">Workout in progress</span>
-          <span class="hero-hint"><span class="workout-timer">⏱ 0:00:00</span> · tap to continue ›</span>
+          <span class="hero-hint"><span class="workout-timer">0:00:00</span> · tap to continue ›</span>
         </button>
 
         <p class="hint section-label">Or log something else</p>
         <div class="type-grid centered">
-          <button class="type-btn" data-form="form-sports">🎾 Sports</button>
-          <button class="type-btn" data-form="form-bodyweight">⚖️ Body weight</button>
+          <button class="type-btn" data-form="form-sports"><span data-icon="ball"></span> Sports</button>
+          <button class="type-btn" data-form="form-bodyweight"><span data-icon="scale"></span> Body weight</button>
         </div>
       </div>
 
@@ -132,7 +132,7 @@
           <button type="button" class="back" id="workout-back" aria-label="Back to Log">‹</button>
           <h2>Workout</h2>
           <!-- Counts up from when you pressed Start (updated by app.js) -->
-          <span class="workout-timer page-timer">⏱ 0:00:00</span>
+          <span class="page-timer"><span data-icon="clock"></span> <span class="workout-timer">0:00:00</span></span>
         </div>
         <ul id="workout-items"></ul>
         <button type="button" class="save" data-form="pick-kind">+ Add exercise</button>
@@ -149,9 +149,9 @@
       <!-- Show only one kind of entry (data-filter says which) -->
       <div id="history-filter" class="range-buttons">
         <button type="button" data-filter="all">All</button>
-        <button type="button" data-filter="workout">💪 Workouts</button>
-        <button type="button" data-filter="sports">🎾 Sports</button>
-        <button type="button" data-filter="bodyweight">⚖️ Weight</button>
+        <button type="button" data-filter="workout">Workouts</button>
+        <button type="button" data-filter="sports">Sports</button>
+        <button type="button" data-filter="bodyweight">Weight</button>
       </div>
       <p class="hint small">Tap an entry to edit it.</p>
       <ul id="history-list"></ul>
@@ -162,9 +162,9 @@
       <!-- Three views; data-view says which one each button shows -->
       <div id="progress-views" class="segmented">
         <span class="seg-indicator" aria-hidden="true"></span>
-        <button type="button" data-view="view-week">📅 Week</button>
-        <button type="button" data-view="view-weight">⚖️ Weight</button>
-        <button type="button" data-view="view-strength">🏋️ Strength</button>
+        <button type="button" data-view="view-week">Week</button>
+        <button type="button" data-view="view-weight">Weight</button>
+        <button type="button" data-view="view-strength">Strength</button>
       </div>
 
       <!-- ---------- WEEK: the weekly summary ---------- -->
@@ -176,7 +176,7 @@
         </div>
         <div class="stat-grid" id="week-stats"></div>
         <div class="chart-card">
-          <div class="chart-title">🔥 Calories burned per day</div>
+          <div class="chart-title">Calories burned per day</div>
           <p class="hint small">Estimated; today counts up to now. Swipe to see other weeks.</p>
           <div class="chart-box short"><canvas id="chart-week"></canvas></div>
         </div>
@@ -205,7 +205,7 @@
 
       <!-- ---------- WEIGHT: body weight (as before) ---------- -->
       <div id="view-weight" class="progress-view" hidden>
-      <button type="button" id="weight-log-button" class="save" data-form="form-bodyweight" hidden>⚖️ Log another weigh-in</button>
+      <button type="button" id="weight-log-button" class="save" data-form="form-bodyweight" hidden>Log another weigh-in</button>
       <h2>Body weight</h2>
       <p id="weight-empty" class="hint" hidden>No weigh-ins yet. Log one from the Log tab.</p>
 
@@ -234,7 +234,7 @@
 
         <!-- The important chart -->
         <div class="chart-card main">
-          <div class="chart-title">☀️ Morning weight</div>
+          <div class="chart-title">Morning weight</div>
           <p class="hint small">Dots are morning weigh-ins; the line is the weekly average.
             Morning weigh-ins are the most comparable from day to day.</p>
           <div class="chart-box"><canvas id="chart-morning"></canvas></div>
@@ -348,8 +348,8 @@
         <button type="button" class="back" aria-label="Back">‹</button>
         <h2>Add to workout</h2>
         <div class="type-grid squares">
-          <button type="button" class="type-btn square" data-step="pick-group"><span class="square-icon">🏋️</span>Exercises</button>
-          <button type="button" class="type-btn square" data-step="form-cardio"><span class="square-icon">🏃</span>Cardio</button>
+          <button type="button" class="type-btn square" data-step="pick-group"><span class="square-icon" data-icon="dumbbell"></span>Exercises</button>
+          <button type="button" class="type-btn square" data-step="form-cardio"><span class="square-icon" data-icon="run"></span>Cardio</button>
         </div>
         <button type="button" class="save" data-step="form-finish">Finish workout</button>
       </div>
@@ -371,7 +371,7 @@
       <!-- ---------- WAKE-UP form (only for editing one from History) ---------- -->
       <form id="form-wake" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
-        <h2>☀️ Wake-up time</h2>
+        <h2>Wake-up time</h2>
         <div class="row">
           <label>Date
             <input type="date" name="date" required>
@@ -386,7 +386,7 @@
       <!-- ---------- FINISH WORKOUT form ---------- -->
       <form id="form-finish" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
-        <h2>✅ Finish workout</h2>
+        <h2>Finish workout</h2>
 
         <div class="row">
           <label>Date
@@ -424,7 +424,7 @@
       <!-- ---------- WEIGHTS form ---------- -->
       <form id="form-weights" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
-        <h2>🏋️ Weights</h2>
+        <h2>Weights</h2>
 
         <!-- "list" connects this box to the suggestions below -->
         <label>Exercise
@@ -456,7 +456,7 @@
       <!-- ---------- CARDIO form ---------- -->
       <form id="form-cardio" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
-        <h2>🏃 Cardio</h2>
+        <h2>Cardio</h2>
 
         <label>Activity
           <select name="activity">
@@ -517,7 +517,7 @@
       <!-- ---------- SPORTS form ---------- -->
       <form id="form-sports" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
-        <h2>🎾 Sports</h2>
+        <h2>Sports</h2>
 
         <div class="row">
           <label>Date
@@ -566,7 +566,7 @@
       <!-- ---------- BODY WEIGHT form ---------- -->
       <form id="form-bodyweight" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
-        <h2>⚖️ Body weight</h2>
+        <h2>Body weight</h2>
 
         <div class="row">
           <label>Date
@@ -630,6 +630,8 @@
        fluid.js is our own layer on top: spring settings, show/hide, and finger-drag tracking. -->
   <script src="motion.min.js"></script>
   <script src="fluid.js"></script>
+  <!-- icons.js: the small line icons (instead of emojis) -->
+  <script src="icons.js"></script>
 
   <!-- Load the behavior (what happens when you click) from app.js -->
   <script src="app.js"></script>

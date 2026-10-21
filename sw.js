@@ -7,9 +7,9 @@
 //  2. Shows the daily reminder notification and opens the app when tapped.
 // =====================================================
 
-const CACHE = "workout-tracker-v2";
+const CACHE = "workout-tracker-v3";
 const CHART_JS = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js";
-const APP_FILES = ["./", "index.html", "style.css", "app.js", "fluid.js", "motion.min.js",
+const APP_FILES = ["./", "index.html", "style.css", "app.js", "fluid.js", "icons.js", "motion.min.js",
                    "manifest.json", "icon-180.png", "icon-192.png", "icon-512.png", CHART_JS];
 
 // Save the app files when the helper is first installed

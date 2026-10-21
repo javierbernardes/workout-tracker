@@ -725,17 +725,17 @@ function updateWeightButtons() {
 
 // ---------- Picking an exercise: six muscle groups, then the exercises ----------
 const EXERCISE_GROUPS = [
-  { name: "Chest", icon: "🏋️", exercises: ["Bench press", "Incline bench press", "Dumbbell press",
+  { name: "Chest", icon: "chest", exercises: ["Bench press", "Incline bench press", "Dumbbell press",
       "Incline dumbbell press", "Chest fly", "Cable crossover", "Push-up", "Dips"] },
-  { name: "Back", icon: "🧗", exercises: ["Deadlift", "Pull-up", "Lat pulldown", "Barbell row",
+  { name: "Back", icon: "back", exercises: ["Deadlift", "Pull-up", "Lat pulldown", "Barbell row",
       "Dumbbell row", "Seated row", "T-bar row", "Face pull"] },
-  { name: "Arms", icon: "💪", exercises: ["Bicep curl", "Hammer curl", "Preacher curl", "Tricep pushdown",
+  { name: "Arms", icon: "arms", exercises: ["Bicep curl", "Hammer curl", "Preacher curl", "Tricep pushdown",
       "Skull crusher", "Overhead tricep extension", "Shoulder press", "Lateral raise", "Rear delt fly"] },
-  { name: "Legs", icon: "🦵", exercises: ["Squat", "Front squat", "Leg press", "Romanian deadlift", "Lunge",
+  { name: "Legs", icon: "legs", exercises: ["Squat", "Front squat", "Leg press", "Romanian deadlift", "Lunge",
       "Bulgarian split squat", "Hip thrust", "Leg extension", "Leg curl", "Calf raise"] },
-  { name: "Abs", icon: "🔥", exercises: ["Plank", "Crunch", "Cable crunch", "Hanging leg raise",
+  { name: "Abs", icon: "abs", exercises: ["Plank", "Crunch", "Cable crunch", "Hanging leg raise",
       "Russian twist", "Ab wheel rollout", "Mountain climbers", "Dead bug"] },
-  { name: "Other", icon: "🧘", exercises: ["Cat-cow", "World's greatest stretch", "90/90 hip stretch",
+  { name: "Other", icon: "stretch", exercises: ["Cat-cow", "World's greatest stretch", "90/90 hip stretch",
       "Hip flexor stretch", "Hamstring stretch", "Pigeon stretch", "Couch stretch", "Thoracic rotation",
       "Shoulder dislocates (band)", "Foam rolling"] }
 ];
@@ -747,12 +747,12 @@ function renderGroupSquares() {
     grid.appendChild(makeSquare(group.icon, group.name, function () {
       renderExerciseSquares(group);
       goStep("pick-exercise");
-    }));
+    }, group.name));
   });
 }
 
 function renderExerciseSquares(group) {
-  document.getElementById("pick-exercise-title").textContent = group.icon + " " + group.name;
+  document.getElementById("pick-exercise-title").textContent = group.name;
   const grid = document.getElementById("exercise-grid");
   grid.innerHTML = "";
   let names = group.exercises.slice();
@@ -764,18 +764,19 @@ function renderExerciseSquares(group) {
     });
   }
   names.forEach(function (name) {
-    grid.appendChild(makeSquare(group.icon, name, function () { startExercise(name); }));
+    grid.appendChild(makeSquare(group.icon, name, function () { startExercise(name); }, group.name));
   });
-  grid.appendChild(makeSquare("✏️", "Something else…", function () { startExercise(""); }));
+  grid.appendChild(makeSquare("pencil", "Something else…", function () { startExercise(""); }));
 }
 
-function makeSquare(icon, label, onPick) {
+// A square button: a line icon on a soft colour wash (one colour per muscle group), name under it
+function makeSquare(iconName, label, onPick, groupName) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "type-btn square";
+  button.className = "type-btn square" + (groupName ? " g-" + groupName.toLowerCase() : "");
   const iconSpan = document.createElement("span");
   iconSpan.className = "square-icon";
-  iconSpan.textContent = icon;
+  iconSpan.innerHTML = iconHTML(iconName);
   button.append(iconSpan, label);
   button.addEventListener("click", onPick);
   return button;
@@ -858,7 +859,7 @@ function editEntry(e) {
   const save = form.querySelector('button[type="submit"]');
   title.dataset.normal = title.dataset.normal || title.textContent;
   save.dataset.normal = save.dataset.normal || save.textContent;
-  title.textContent = "✏️ " + EDIT_TITLES[e.type];
+  title.textContent = EDIT_TITLES[e.type];
   save.textContent = "Save changes";
   document.getElementById("discard-workout").hidden = true;
 }
@@ -1028,7 +1029,7 @@ function updateWorkoutTimer() {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor(seconds / 60) % 60;
   const s = seconds % 60;
-  const text = "⏱ " + h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  const text = h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   document.querySelectorAll(".workout-timer").forEach(function (el) { el.textContent = text; });
 }
 setInterval(updateWorkoutTimer, 1000);
@@ -1061,7 +1062,7 @@ function renderCurrentWorkout() {
   items.forEach(function (e) {
     const item = document.createElement("li");
     const text = document.createElement("span");
-    text.textContent = ICONS[e.type] + " " + describe(e);
+    text.append(icon(ICONS[e.type]), " " + describe(e));
     const remove = document.createElement("button");
     remove.className = "delete";
     remove.title = "Remove";
@@ -1464,7 +1465,8 @@ document.getElementById("form-wake").addEventListener("submit", function (event)
 //  9. HISTORY LIST
 // =====================================================
 
-const ICONS = { workout: "💪", weights: "🏋️", cardio: "🏃", sports: "🎾", bodyweight: "⚖️", wake: "☀️" };
+// Which line icon (icons.js) goes with each kind of entry
+const ICONS = { workout: "dumbbell", weights: "dumbbell", cardio: "run", sports: "ball", bodyweight: "scale", wake: "sun" };
 
 // Turn one entry into a short line of text
 function describe(e) {
@@ -1608,7 +1610,7 @@ function renderHistory() {
 
     const text = document.createElement("div");
     const title = document.createElement("div");
-    title.textContent = ICONS[e.type] + " " + describe(e);
+    title.append(icon(ICONS[e.type]), " " + describe(e));
     // Estimated extra calories for exercise entries
     const kg = weightKgOn(e.date);
     const burned = kg && restingPerDay(e.date) ? entryKcal(e, kg) : 0;
@@ -1639,7 +1641,7 @@ function renderHistory() {
       children.sort(function (a, b) { return entryTime(a).localeCompare(entryTime(b)); });
       children.forEach(function (c) {
         const line = document.createElement("li");
-        line.textContent = ICONS[c.type] + " " + describe(c) + " · " + formatTime(entryTime(c));
+        line.append(icon(ICONS[c.type]), " " + describe(c) + " · " + formatTime(entryTime(c)));
         // Tapping one exercise edits just that exercise
         line.className = "tappable";
         line.addEventListener("click", function (event) {
@@ -2309,12 +2311,12 @@ function renderWeekSummary() {
     const bits = [];
     inWeek.forEach(function (e) {
       if (e.date !== d) return;
-      if (e.type === "workout") bits.push("💪 " + e.minutes + " min");
-      if (e.type === "sports") bits.push("🎾 " + e.sport);
-      if (e.type === "cardio" && !e.workoutId) bits.push("🏃 " + e.activity);
-      if (e.type === "bodyweight" && e.morning) bits.push("⚖️ " + e.weight + " " + e.unit);
+      if (e.type === "workout") bits.push("Workout " + e.minutes + " min");
+      if (e.type === "sports") bits.push(e.sport);
+      if (e.type === "cardio" && !e.workoutId) bits.push(e.activity);
+      if (e.type === "bodyweight" && e.morning) bits.push(e.weight + " " + e.unit);
     });
-    if (perDay[i]) bits.push("🔥 " + kcalText(perDay[i].total));
+    if (perDay[i]) bits.push(kcalText(perDay[i].total) + " kcal");
     const item = document.createElement("li");
     const name = document.createElement("span");
     name.textContent = d === today() ? "Today"
@@ -2513,8 +2515,8 @@ function renderToday() {
   const t = today();
   const wake = wakeEntryFor(t);
   document.getElementById("today-wake-text").textContent = wake
-    ? "☀️ Woke up at " + formatTime(wake.time)
-    : "☀️ Wake-up not logged (assuming 7:00 AM)";
+    ? "Woke up at " + formatTime(wake.time)
+    : "Wake-up not logged (assuming 7:00 AM)";
   document.getElementById("wake-time").value = wake ? wake.time : "";
 
   const day = dayCalories(t, nowMinutes());

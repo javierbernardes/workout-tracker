@@ -175,6 +175,11 @@ Just for the user for now, but designed so others can use it later (every entry 
      + your own past names]) → `pick-exercise` squares (+ "Something else…") → weights form.
      Saving goes back one step (`afterSave`/`sheetStack`); ‹ goes back a step or closes.
      Lists live in `EXERCISE_GROUPS`. Selects and suggestion inputs have a drawn chevron.
+   - Icons (2026-10-21): no emojis in the UI. `icons.js` holds small SVG line icons
+     (`ICON_PATHS`, `icon(name)` → element, `iconHTML(name)`); any `<span data-icon="name">`
+     in index.html is filled on load. Muscle-group squares get a colour wash via `.g-chest`
+     etc. (`--g` rgb triplet in style.css). ✓ and ⚠ text marks are still used in messages.
+     The "Burned today" box is a blue card inside the column (not edge to edge).
    - Body weight square on Log shows only until today's weigh-in exists; afterwards a
      "Log another weigh-in" button sits at the top of Progress › Weight (`updateWeightButtons`).
    - Testing here: `python3 -m http.server 8080` + Playwright (Chromium is preinstalled in the
