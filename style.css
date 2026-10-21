@@ -1,22 +1,75 @@
-/* ---------- Colors, defined once and reused everywhere ---------- */
+/* =====================================================
+   TOKENS: every color, size and spacing value is defined once here.
+   The rest of the file only uses these names, so the whole app stays
+   consistent and one change here changes it everywhere.
+   ===================================================== */
 :root {
-  --bg: #f6f7f9;        /* page background */
+  color-scheme: light dark;   /* lets the browser draw native parts (date pickers, selects) in the right theme */
+
+  /* ---------- Colors ---------- */
+  --bg: #f4f5f7;        /* page background */
   --card: #ffffff;      /* boxes and buttons */
-  --text: #1d2330;      /* main text */
+  --text: #1a1f2b;      /* main text */
   --muted: #6b7280;     /* secondary text */
   --accent: #2f6fed;    /* highlight color */
-  --border: #e3e6eb;
+  --accent-soft: rgba(47, 111, 237, 0.12);   /* a light wash of the accent, for selected things */
+  --danger: #d64545;
+  --border: #e4e7ec;
+  --press: rgba(0, 0, 0, 0.06);              /* the tint a row shows while your finger is on it */
+  --scrim: rgba(0, 0, 0, 0.3);               /* dims the page behind a sheet */
+
+  /* Translucent "material" surfaces (toolbars, sheets): a blurred, see-through
+     background with a bright top edge, like light catching glass. */
+  --material-bg: rgba(255, 255, 255, 0.72);
+  --material-edge: rgba(255, 255, 255, 0.7);
+  --material-blur: 20px;
+  --shadow-thin: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-thick: 0 12px 32px rgba(16, 24, 40, 0.18), 0 2px 6px rgba(16, 24, 40, 0.08);
+
+  /* ---------- Type scale ----------
+     Each size comes with its own tracking (letter-spacing) and leading (line-height):
+     big text is tightened and set close together, small text is opened up a little. */
+  --fs-xs: 0.75rem;   --ls-xs: 0.01em;   --lh-xs: 1.35;
+  --fs-sm: 0.875rem;  --ls-sm: 0.004em;  --lh-sm: 1.4;
+  --fs-md: 1rem;      --ls-md: 0;        --lh-md: 1.5;
+  --fs-lg: 1.125rem;  --ls-lg: -0.01em;  --lh-lg: 1.35;
+  --fs-xl: 1.375rem;  --ls-xl: -0.015em; --lh-xl: 1.25;
+  --fs-2xl: 1.75rem;  --ls-2xl: -0.02em; --lh-2xl: 1.15;
+  --fs-3xl: 2.25rem;  --ls-3xl: -0.025em; --lh-3xl: 1.1;
+  --fs-4xl: 2.75rem;  --ls-4xl: -0.03em; --lh-4xl: 1.05;
+
+  /* ---------- Spacing and corners (in rem, so they grow with the text size) ---------- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --r-sm: 0.5rem;
+  --r-md: 0.75rem;
+  --r-lg: 1rem;
+  --r-xl: 1.25rem;
+  --tap: 2.75rem;     /* 44px: the smallest comfortable touch target */
 }
 
 /* Dark mode: used automatically if your phone/computer is set to dark */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14171c;
-    --card: #1e2229;
+    --bg: #121418;
+    --card: #1d2026;
     --text: #e8eaee;
     --muted: #9aa1ad;
     --accent: #5b8cff;
-    --border: #2c313a;
+    --accent-soft: rgba(91, 140, 255, 0.18);
+    --danger: #ff6b6b;
+    --border: #2a2e36;
+    --press: rgba(255, 255, 255, 0.08);
+    --scrim: rgba(0, 0, 0, 0.5);
+    --material-bg: rgba(29, 32, 38, 0.72);
+    --material-edge: rgba(255, 255, 255, 0.08);
+    --shadow-thin: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-thick: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -25,9 +78,80 @@
 
 body {
   margin: 0;
+  /* The phone's own font: it already comes with good letter spacing at every size */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--fs-md);
+  line-height: var(--lh-md);
+  letter-spacing: var(--ls-md);
+  font-optical-sizing: auto;
   background: var(--bg);
   color: var(--text);
+  -webkit-tap-highlight-color: transparent;   /* we draw our own press feedback */
+}
+
+/* ---------- Press feedback: on the way DOWN, instantly ----------
+   A button shrinks the moment it's touched (not when the finger lifts).
+   The tiny 100 ms ease is only for the press itself; nothing here is a gesture. */
+button {
+  touch-action: manipulation;    /* no 300 ms wait for a possible double-tap */
+  transition: transform 100ms ease-out, background-color 100ms ease-out, opacity 100ms ease-out;
+}
+
+button:active { transform: scale(0.97); }
+
+/* Rows and cards you can tap: iOS-style highlight instead of a shrink */
+.tappable { transition: background-color 100ms ease-out; }
+.tappable:active { background-color: var(--press); }
+
+/* Keyboard users get a clear ring; mouse/touch users don't see one */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ---------- Materials: see-through chrome that content scrolls under ---------- */
+.material {
+  background: var(--material-bg);
+  -webkit-backdrop-filter: blur(var(--material-blur)) saturate(180%);
+  backdrop-filter: blur(var(--material-blur)) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--material-edge), var(--shadow-thin);
+}
+
+/* Bigger surfaces read as thicker: stronger blur, deeper shadow */
+.material-thick {
+  background: var(--material-bg);
+  -webkit-backdrop-filter: blur(calc(var(--material-blur) * 2)) saturate(180%);
+  backdrop-filter: blur(calc(var(--material-blur) * 2)) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--material-edge), var(--shadow-thick);
+}
+
+/* ---------- The three "reduce …" settings people can turn on ---------- */
+/* Less transparency: make the glass frosty / solid */
+@media (prefers-reduced-transparency: reduce) {
+  .material, .material-thick {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* More contrast: solid surfaces with a defined edge */
+@media (prefers-contrast: more) {
+  .material, .material-thick {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid var(--text);
+  }
+  :root { --border: #8a8f99; --muted: #4b5563; }
+}
+
+/* Less motion: fluid.js already swaps springs and slides for short fades.
+   This covers the few CSS transitions: keep the press tint, drop the shrink. */
+@media (prefers-reduced-motion: reduce) {
+  button { transition: background-color 100ms ease-out, opacity 100ms ease-out; }
+  button:active { transform: none; opacity: 0.7; }
 }
 
 header, nav, main {
