@@ -2348,20 +2348,38 @@ function showMorning() {
     return e.type === "bodyweight" && e.date === t && e.morning;
   }) && getPref("weighLater", "") !== t;
 
+  const morning = document.getElementById("morning");
   const wakeStep = document.getElementById("morning-wake");
   const weighStep = document.getElementById("morning-weigh");
   const wasWeighing = !weighStep.hidden;
-  wakeStep.hidden = !needWake;
-  weighStep.hidden = needWake || !needWeigh;
-  document.getElementById("morning").hidden = !needWake && !needWeigh;
+  const step = needWake ? wakeStep : (needWeigh ? weighStep : null);
 
   // Getting the weigh-in ready (only when it first appears, not while you type)
-  if (!weighStep.hidden && !wasWeighing) {
+  if (step === weighStep && !wasWeighing) {
     document.getElementById("mw-unit").value = getPref("weightUnit", "kg");
     document.getElementById("mw-weight").value = "";
     document.getElementById("mw-peed").checked = false;
     document.getElementById("mw-pooped").checked = false;
   }
+
+  // The screen "materializes": it arrives slightly small and blurred, and leaves
+  // the same way. Each step slides up a little as it comes in, and the step
+  // before it slides up and out, so the routine reads as moving forward.
+  if (!step) {
+    fluid.hide(morning, { scale: 0.96, blur: 8 });
+    return;
+  }
+  if (morning.hidden) {
+    // First appearance: place the right step before the screen comes in
+    wakeStep.hidden = step !== wakeStep;
+    weighStep.hidden = step !== weighStep;
+    fluid.show(morning, { scale: 0.96, blur: 8 });
+    return;
+  }
+  [wakeStep, weighStep].forEach(function (s) {
+    if (s === step) fluid.show(s, { y: 16 });
+    else fluid.hide(s, { y: -16 });
+  });
 }
 
 document.getElementById("wake-now").addEventListener("click", function () {
