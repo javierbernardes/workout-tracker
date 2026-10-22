@@ -68,6 +68,48 @@
     </div>
   </div>
 
+  <!-- ============ WELCOME: the first time someone opens the app ============ -->
+  <div id="welcome" class="morning" hidden>
+    <div class="morning-step">
+      <div class="morning-icon" data-icon="dumbbell"></div>
+      <h1>Workout Tracker</h1>
+      <p class="hint">Log workouts, sports and your morning weight. See calories, progress and strength over time.</p>
+      <ol class="welcome-steps">
+        <li><strong>Add it to your home screen</strong> — in Safari tap Share, then "Add to Home Screen". That's what makes reminders work.</li>
+        <li><strong>Create an account</strong> and confirm your email.</li>
+        <li><strong>Wait for Javier's OK</strong> — new accounts are approved by hand.</li>
+      </ol>
+      <button type="button" id="welcome-signup" class="big-button">Create account</button>
+      <button type="button" id="welcome-signin" class="link-button">I already have an account</button>
+      <button type="button" id="welcome-skip" class="link-button morning-skip">Just look around</button>
+    </div>
+  </div>
+
+  <!-- ============ WAITING FOR APPROVAL ============ -->
+  <div id="gate" class="morning" hidden>
+    <div class="morning-step">
+      <div class="morning-icon" data-icon="clock"></div>
+      <h1 id="gate-title">Waiting for approval</h1>
+      <p class="hint" id="gate-text"></p>
+      <button type="button" id="gate-check" class="big-button">Check again</button>
+      <button type="button" id="gate-signout" class="link-button morning-skip">Sign out</button>
+    </div>
+  </div>
+
+  <!-- ============ SET A NEW PASSWORD (opened by the reset link) ============ -->
+  <div id="recovery" class="morning" hidden>
+    <div class="morning-step">
+      <div class="morning-icon" data-icon="user"></div>
+      <h1>Choose a new password</h1>
+      <form id="form-recovery" class="log-form">
+        <label>New password
+          <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <button type="submit" class="big-button">Save password</button>
+      </form>
+    </div>
+  </div>
+
   <header>
     <h1>Workout Tracker</h1>
     <!-- "Synced ✓", "2 waiting…", etc. (filled in by app.js) -->
@@ -316,28 +358,79 @@
         <button type="button" id="notify-off" class="secondary" hidden>Turn off</button>
       </div>
 
-      <!-- Where your data is saved. Filled in once per device. -->
-      <!-- Account: the sign-in form, or who you're signed in as (app.js shows one) -->
-      <form id="form-signin" class="log-form account">
+      <!-- ============ ACCOUNT ============ -->
+      <div class="log-form account">
         <h2>Account</h2>
-        <p class="hint small">Sign in to save your logs online and see them on all your devices.
-          Until then, they're kept on this device only.</p>
 
-        <label>Email
-          <input name="email" type="email" autocomplete="username" required>
-        </label>
+        <!-- Signed out: sign in, or create an account -->
+        <div id="signed-out" class="log-form">
+          <p class="hint small">Sign in to save your logs online and see them on all your devices.
+            Until then, they're kept on this device only.</p>
+          <div class="range-buttons" id="auth-mode">
+            <button type="button" data-mode="signin" class="active">Sign in</button>
+            <button type="button" data-mode="signup">Create account</button>
+          </div>
 
-        <label>Password
-          <input name="password" type="password" autocomplete="current-password" required>
-        </label>
+          <form id="form-signin" class="log-form">
+            <label>Email
+              <input name="email" type="email" autocomplete="username" required>
+            </label>
+            <label>Password
+              <input name="password" type="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit" class="save">Sign in</button>
+            <button type="button" id="forgot-password" class="link-button">Forgot your password?</button>
+          </form>
 
-        <button type="submit" class="save">Sign in</button>
-      </form>
+          <form id="form-signup" class="log-form" hidden>
+            <label>Your name
+              <input name="name" autocomplete="name" maxlength="40" placeholder="How your friends know you" required>
+            </label>
+            <label>Email
+              <input name="email" type="email" autocomplete="username" required>
+            </label>
+            <label>Password
+              <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
+            <p class="hint small">You'll get an email to confirm your address. After that, Javier approves
+              your account and you're in.</p>
+            <button type="submit" class="save">Create account</button>
+          </form>
+        </div>
 
-      <div id="signed-in" class="log-form account" hidden>
-        <h2>Account</h2>
-        <p>Signed in as <strong id="signed-in-email"></strong></p>
-        <button type="button" id="sign-out" class="secondary">Sign out</button>
+        <!-- Signed in -->
+        <div id="signed-in" class="log-form" hidden>
+          <p>Signed in as <strong id="signed-in-name"></strong> <span class="hint small" id="signed-in-email"></span></p>
+          <p class="hint small" id="membership-note"></p>
+
+          <label>Your name
+            <input id="member-name" maxlength="40" autocomplete="name">
+          </label>
+          <button type="button" id="save-name" class="secondary">Save name</button>
+
+          <!-- "details" = a section that opens when you tap its summary line -->
+          <details class="account-details">
+            <summary>Change password</summary>
+            <form id="form-password" class="log-form">
+              <label>New password
+                <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+              </label>
+              <button type="submit" class="secondary">Save new password</button>
+            </form>
+          </details>
+
+          <button type="button" id="sign-out" class="secondary">Sign out</button>
+          <p class="hint small">Your logs are stored in Javier's Supabase project and only you can see them.
+            Javier sees your name and email in the members list, never your logs.</p>
+        </div>
+      </div>
+
+      <!-- ============ MEMBERS (only the admin sees this) ============ -->
+      <div id="members-box" class="log-form account" hidden>
+        <h2>Members</h2>
+        <p class="hint small">People who created an account. Approve someone to let them use the app;
+          decline to block them (you can change your mind later).</p>
+        <ul id="members-list" class="members-list"></ul>
       </div>
     </section>
   </main>

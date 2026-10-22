@@ -179,7 +179,7 @@ header h1 {
 }
 
 /* Profile: each part (details, notification, account) is its own card */
-#profile .log-form {
+#profile > .log-form {
   padding: var(--sp-4);
   margin-bottom: var(--sp-4);
   border: 1px solid var(--border);
@@ -187,7 +187,7 @@ header h1 {
   background: var(--card);
 }
 
-#profile .log-form h2 { margin-top: 0; }
+#profile > .log-form h2 { margin-top: 0; }
 .account p { margin: 0; }
 
 /* ---------- Tabs ----------
@@ -1282,3 +1282,34 @@ body.sheet-open { overflow: hidden; }
 
   #toast { bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
 }
+
+/* ---------- Account, welcome and members ---------- */
+.welcome-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  text-align: left;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-sm);
+  line-height: var(--lh-sm);
+}
+.welcome-steps li { margin-bottom: var(--sp-2); }
+.welcome-steps strong { color: var(--text); }
+
+.account-details summary { cursor: pointer; color: var(--accent); padding: var(--sp-2) 0; }
+.account-details form { margin-top: var(--sp-2); }
+
+.members-list { list-style: none; margin: 0; padding: 0; }
+.member {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.member:last-child { border-bottom: none; }
+.member.pending strong { color: var(--accent); }
+.member.declined strong { color: var(--muted); text-decoration: line-through; }
+.member-actions { display: flex; flex-direction: column; gap: var(--sp-1); flex: 0 0 auto; }
+.member-actions button { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); }

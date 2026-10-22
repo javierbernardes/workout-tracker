@@ -191,6 +191,32 @@ Just for the user for now, but designed so others can use it later (every entry 
      cloud session); Chart.js can't load there (CDN blocked), charts are untested in that setup.
      The user tests on iPhone. `sw.js` CACHE is "workout-tracker-v2"; bump it if the file list changes.
 
+9. ✅ Friends can join (2026-10-22). Open sign-up with approval by Javier:
+   - Supabase (`supabase-members.sql`): table `members` (user_id, email, name, status
+     pending/approved/declined, role member/admin, requested_at, approved_at); trigger on
+     auth.users copies the sign-up name (`raw_user_meta_data.name`) into a pending row;
+     `is_approved()` / `is_admin()` (security definer); entries + push_subscriptions policies
+     now also require `is_approved()`; `set_my_name(text)` rpc; `approved_members()` returns
+     (user_id, name) of approved members to approved members (for future games, never emails).
+     Javier's row: approved + admin. The connector's `apply_migration`/`execute_sql` time out
+     on any statement containing DROP (it waits for a confirmation that never arrives): use
+     CREATE / ALTER POLICY instead, in small batches.
+   - App (part 10): Sign in / Create account (name, email, password) chips; "Forgot your
+     password?" → Supabase recover email; links in emails open the app with tokens after `#`
+     (`takeTokensFromLink` signs in, `type=recovery` opens `#recovery` "Choose a new password");
+     membership copy in localStorage `membership` (`loadMembership`, `isApproved`, `isAdmin`);
+     `#gate` full-screen "Waiting for approval / Not approved" with Check again; sync is
+     skipped until approved (header shows "Waiting for approval"); Profile shows name (+ Save
+     name via rpc), Change password, privacy line; admins get a Members list with
+     Approve / Decline (PATCH members) and a toast when someone is waiting. `#welcome` screen
+     on first visit (no session, no entries, pref `welcomed` unset) with install steps.
+   - Still manual in the Supabase dashboard (user to do): Authentication → Sign In / Providers →
+     Email → "Allow new users to sign up" ON (keep "Confirm email" ON); Authentication → URL
+     Configuration → Site URL = https://javierbernardes.github.io/workout-tracker/ and add it
+     to Redirect URLs; optionally enable leaked-password protection (advisor warning).
+   - Not yet: "Delete my account" (needs a small Edge Function with the service role);
+     push notification to Javier when someone requests to join.
+
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.
 Git signs in via Git Credential Manager (browser); no `gh` CLI installed.

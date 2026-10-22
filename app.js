@@ -118,6 +118,11 @@ async function requestSession(grantType, body) {
   if (!response.ok) {
     throw new Error(answer.error_description || answer.msg || answer.message || "Sign-in failed");
   }
+  setSessionFrom(answer);
+}
+
+// Remember a session Supabase gave us (from a sign-in, a renewal, or a link in an email)
+function setSessionFrom(answer) {
   setSession({
     accessToken: answer.access_token,
     refreshToken: answer.refresh_token,
@@ -129,6 +134,7 @@ async function requestSession(grantType, body) {
 
 async function signIn(email, password) {
   await requestSession("password", { email: email, password: password });
+  await loadMembership();   // approved, or still waiting?
   // Upload everything already saved on this device (also logs from before signing in)
   const uploads = loadEntries().map(function (e) { return { op: "add", entry: e }; });
   saveOutbox(loadOutbox().concat(uploads));
@@ -138,6 +144,7 @@ async function signIn(email, password) {
 // Signing out removes your logs from this device (they stay safe online)
 function signOut() {
   setSession(null);
+  setMembership(null);
   saveEntries([]);
   saveOutbox([]);
   setActiveWorkout(null);
@@ -198,6 +205,7 @@ function syncSoon() {
 
 async function sync() {
   if (!SUPABASE_URL || !getSession()) return updateSyncStatus();   // not signed in: this device only
+  if (!isApproved()) return updateSyncStatus();                     // waiting for approval: keep logs here for now
   if (syncing) { syncAgain = true; return; }    // already sending; go again afterwards
 
   syncing = true;
@@ -265,6 +273,8 @@ function updateSyncStatus() {
   const waiting = loadOutbox().length;
   if (!SUPABASE_URL || !getSession()) {
     status.textContent = syncError ? "⚠ " + syncError : "Not signed in";
+  } else if (!isApproved()) {
+    status.textContent = "Waiting for approval";
   } else if (syncing) {
     status.textContent = "Syncing…";
   } else if (syncError) {
@@ -2907,15 +2917,148 @@ document.getElementById("notify-time").addEventListener("change", async function
 // ---------- Account ----------
 
 const signInForm = document.getElementById("form-signin");
+const signUpForm = document.getElementById("form-signup");
 
-// Show the sign-in form, or "Signed in as …"
+// ---------- Membership: are you approved? ----------
+// Your row in the members table (name, status, role). A copy is kept on this
+// device so the app knows at once whether to show the waiting screen.
+function getMembership() {
+  try { return JSON.parse(localStorage.getItem("membership")); } catch (error) { return null; }
+}
+function setMembership(m) {
+  if (m) localStorage.setItem("membership", JSON.stringify(m));
+  else localStorage.removeItem("membership");
+}
+function isApproved() {
+  const m = getMembership();
+  return !!m && m.status === "approved";
+}
+function isAdmin() {
+  const m = getMembership();
+  return !!m && m.status === "approved" && m.role === "admin";
+}
+
+async function loadMembership() {
+  const session = getSession();
+  if (!session) { setMembership(null); return null; }
+  const rows = await database("members?select=name,status,role&user_id=eq." + session.userId, {});
+  const m = rows && rows[0] ? rows[0] : { name: "", status: "pending", role: "member" };
+  setMembership(m);
+  renderGate();
+  return m;
+}
+
+// A request to Supabase's sign-in service (create account, reset password, …)
+async function authRequest(path, method, body, token) {
+  const headers = { apikey: SUPABASE_KEY, "Content-Type": "application/json" };
+  if (token) headers.Authorization = "Bearer " + token;
+  const response = await fetch(SUPABASE_URL + "/auth/v1/" + path, {
+    method: method, headers: headers, body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await response.text();
+  let answer = {};
+  try { answer = JSON.parse(text); } catch (error) { /* no details */ }
+  if (!response.ok) throw new Error(answer.error_description || answer.msg || answer.message || "Something went wrong");
+  return answer;
+}
+
+// Create an account. The name travels with it and lands in the members table.
+// Returns true if you're signed in right away, false if an email must be confirmed first.
+async function signUp(name, email, password) {
+  const answer = await authRequest("signup", "POST", { email: email, password: password, data: { name: name } });
+  if (!answer.access_token) return false;
+  setSessionFrom(answer);
+  await loadMembership();
+  return true;
+}
+
+// Links in emails (confirm your address, reset your password) open the app with
+// a pass in the address bar (after the #). Take it, sign in with it, and tidy
+// the address. Returns what kind of link it was, or null if there wasn't one.
+async function takeTokensFromLink() {
+  const hash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  if (!hash.includes("access_token=") && !hash.includes("error_description=")) return null;
+  const params = new URLSearchParams(hash);
+  history.replaceState(null, "", location.pathname + location.search);
+  if (params.get("error_description")) {
+    showToast(params.get("error_description").replace(/\+/g, " "));
+    return null;
+  }
+  const token = params.get("access_token");
+  try {
+    const user = await authRequest("user", "GET", null, token);
+    setSession({
+      accessToken: token,
+      refreshToken: params.get("refresh_token"),
+      expiresAt: Date.now() + Number(params.get("expires_in") || 3600) * 1000,
+      userId: user.id,
+      email: user.email
+    });
+    await loadMembership();
+    return params.get("type") || "signup";
+  } catch (error) {
+    showToast(error.message);
+    return null;
+  }
+}
+
+// Sign in / Create account switch
+document.querySelectorAll("#auth-mode button").forEach(function (button) {
+  button.addEventListener("click", function () { setAuthMode(button.dataset.mode); });
+});
+function setAuthMode(mode) {
+  document.querySelectorAll("#auth-mode button").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.mode === mode);
+  });
+  signInForm.hidden = mode !== "signin";
+  signUpForm.hidden = mode !== "signup";
+}
+
 function renderAccount() {
   const session = getSession();
-  signInForm.hidden = !!session;
+  const m = getMembership();
+  document.getElementById("signed-out").hidden = !!session;
   document.getElementById("signed-in").hidden = !session;
-  if (session) document.getElementById("signed-in-email").textContent = session.email;
+  document.getElementById("members-box").hidden = !session || !isAdmin();
+  if (session) {
+    document.getElementById("signed-in-name").textContent = (m && m.name) || session.email;
+    document.getElementById("signed-in-email").textContent = (m && m.name) ? session.email : "";
+    document.getElementById("membership-note").textContent =
+      !m ? "" :
+      m.status === "approved" ? (m.role === "admin" ? "Approved · admin" : "Approved ✓") :
+      m.status === "declined" ? "Not approved" : "Waiting for Javier's approval";
+    const nameBox = document.getElementById("member-name");
+    if (document.activeElement !== nameBox) nameBox.value = (m && m.name) || "";
+    if (isAdmin()) renderMembers();
+  }
   renderNotify();   // the reminder needs you signed in
+  renderGate();
 }
+
+// The waiting screen: shown while your account is pending or declined
+function renderGate() {
+  const gate = document.getElementById("gate");
+  const m = getMembership();
+  const waiting = !!getSession() && !!m && m.status !== "approved";
+  if (!waiting) { if (!gate.hidden) fluid.hide(gate, { scale: 0.96, blur: 8 }); return; }
+  const declined = m.status === "declined";
+  document.getElementById("gate-title").textContent = declined ? "Not approved" : "Waiting for approval";
+  document.getElementById("gate-text").textContent = declined
+    ? "Javier hasn't approved this account. Ask him if you think that's a mistake."
+    : "Your account is created. Javier approves new members by hand — ask him, then come back here.";
+  if (gate.hidden) fluid.show(gate, { scale: 0.96, blur: 8 });
+}
+
+document.getElementById("gate-check").addEventListener("click", async function () {
+  try {
+    const m = await loadMembership();
+    if (m.status === "approved") { showToast("You're in ✓"); renderAccount(); sync(); }
+    else showToast("Not yet. Javier hasn't approved you.");
+  } catch (error) {
+    showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
+  }
+});
+document.getElementById("gate-signout").addEventListener("click", function () { signOut(); renderAccount(); });
 
 signInForm.addEventListener("submit", async function (event) {
   event.preventDefault();
@@ -2928,10 +3071,77 @@ signInForm.addEventListener("submit", async function (event) {
     await signIn(f.email.value.trim(), f.password.value);
     signInForm.reset();
     renderAccount();
-    showToast("Signed in ✓");
+    showToast(isApproved() ? "Signed in ✓" : "Signed in · waiting for approval");
   } catch (error) {
     showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
   }
+});
+
+signUpForm.addEventListener("submit", async function (event) {
+  event.preventDefault();
+  const f = signUpForm.elements;
+  try {
+    const signedIn = await signUp(f.name.value.trim(), f.email.value.trim(), f.password.value);
+    signUpForm.reset();
+    renderAccount();
+    showToast(signedIn ? "Account created ✓" : "Check your email to confirm your address");
+    if (!signedIn) setAuthMode("signin");
+  } catch (error) {
+    showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
+  }
+});
+
+// Forgot password: Supabase emails a link that opens the "choose a new password" screen
+document.getElementById("forgot-password").addEventListener("click", async function () {
+  const email = signInForm.elements.email.value.trim();
+  if (!email) { showToast("Type your email above first"); return; }
+  try {
+    await authRequest("recover", "POST", { email: email, options: { redirect_to: location.href.split("#")[0] } });
+    showToast("Check your email for the reset link");
+  } catch (error) {
+    showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
+  }
+});
+
+// Change the password (from Profile, or from the reset link's screen)
+async function changePassword(password) {
+  const session = await validSession();
+  await authRequest("user", "PUT", { password: password }, session.accessToken);
+}
+
+document.getElementById("form-password").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  try {
+    await changePassword(event.target.elements.password.value);
+    event.target.reset();
+    event.target.closest("details").open = false;
+    showToast("Password changed ✓");
+  } catch (error) { showToast(error.message); }
+});
+
+document.getElementById("form-recovery").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  try {
+    await changePassword(event.target.elements.password.value);
+    event.target.reset();
+    fluid.hide(document.getElementById("recovery"), { scale: 0.96, blur: 8 });
+    showToast("Password saved ✓");
+    renderAccount();
+  } catch (error) { showToast(error.message); }
+});
+
+// Your name (only you can change it; the database allows nothing else through this door)
+document.getElementById("save-name").addEventListener("click", async function () {
+  const name = document.getElementById("member-name").value.trim();
+  if (!name) { showToast("Type a name first"); return; }
+  try {
+    await database("rpc/set_my_name", { method: "POST", body: JSON.stringify({ new_name: name }) });
+    const m = getMembership() || {};
+    m.name = name.slice(0, 40);
+    setMembership(m);
+    renderAccount();
+    showToast("Name saved ✓");
+  } catch (error) { showToast(error.message); }
 });
 
 document.getElementById("sign-out").addEventListener("click", function () {
@@ -2945,6 +3155,74 @@ document.getElementById("sign-out").addEventListener("click", function () {
     renderAccount();
   });
 });
+
+// ---------- Members (admin only): approve or decline people ----------
+let membersToastShown = false;
+async function renderMembers() {
+  const list = document.getElementById("members-list");
+  let rows;
+  try {
+    rows = await database("members?select=user_id,email,name,status,role,requested_at&order=requested_at.desc", {});
+  } catch (error) {
+    list.innerHTML = "";
+    const li = document.createElement("li");
+    li.className = "hint small";
+    li.textContent = "Couldn't load the members list: " + error.message;
+    list.appendChild(li);
+    return;
+  }
+  list.innerHTML = "";
+  const pending = rows.filter(function (r) { return r.status === "pending"; });
+  if (pending.length && !membersToastShown) {
+    membersToastShown = true;
+    showToast(pending.length === 1 ? "1 person is waiting to join" : pending.length + " people are waiting to join");
+  }
+  rows.forEach(function (r) {
+    const li = document.createElement("li");
+    li.className = "member " + r.status;
+    const who = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = r.name || "(no name)";
+    const email = document.createElement("div");
+    email.className = "hint small";
+    email.textContent = r.email;
+    const when = document.createElement("div");
+    when.className = "hint small";
+    when.textContent = (r.role === "admin" ? "Admin · " : "") +
+      (r.status === "pending" ? "Asked to join " : r.status === "approved" ? "Approved · joined " : "Declined · asked ") +
+      dayLabel(r.requested_at.slice(0, 10));
+    who.append(name, email, when);
+    const actions = document.createElement("div");
+    actions.className = "member-actions";
+    if (r.role !== "admin") {
+      if (r.status !== "approved") actions.appendChild(memberButton("Approve", "save", function () { setMemberStatus(r, "approved"); }));
+      if (r.status !== "declined") actions.appendChild(memberButton("Decline", "secondary", function () { setMemberStatus(r, "declined"); }));
+    }
+    li.append(who, actions);
+    list.appendChild(li);
+  });
+}
+
+function memberButton(label, cls, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = cls;
+  b.textContent = label;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+async function setMemberStatus(member, status) {
+  try {
+    await database("members?user_id=eq." + member.user_id, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status: status, approved_at: status === "approved" ? new Date().toISOString() : null })
+    });
+    showToast((member.name || member.email) + (status === "approved" ? " approved ✓" : " declined"));
+    renderMembers();
+  } catch (error) { showToast(error.message); }
+}
 
 // Settings from the Google Sheets version, no longer used
 localStorage.removeItem("pref-sheetUrl");
@@ -2968,14 +3246,45 @@ function refreshViews() {
   if (!profileForm.contains(document.activeElement)) renderProfile();
 }
 
-renderCurrentWorkout();
-renderAccount();
-renderProfile();
-renderNotify();
-renderToday();
-showMorning();
-updateSyncStatus();
-sync();
+// ---------- The welcome screen (first visit, not signed in) ----------
+function showWelcome() {
+  const welcome = document.getElementById("welcome");
+  if (welcome.hidden) fluid.show(welcome, { scale: 0.96, blur: 8 });
+}
+function closeWelcome(mode) {
+  setPref("welcomed", "1");
+  fluid.hide(document.getElementById("welcome"), { scale: 0.96, blur: 8 });
+  if (mode) {
+    document.querySelector('.tab[data-section="profile"]').click();
+    setAuthMode(mode);
+  }
+  showMorning();
+}
+document.getElementById("welcome-signup").addEventListener("click", function () { closeWelcome("signup"); });
+document.getElementById("welcome-signin").addEventListener("click", function () { closeWelcome("signin"); });
+document.getElementById("welcome-skip").addEventListener("click", function () { closeWelcome(null); });
+
+// Start: first deal with a link from an email (if that's how the app was opened),
+// then draw everything
+async function start() {
+  renderCurrentWorkout();
+  renderProfile();
+  renderToday();
+  updateSyncStatus();
+
+  const linkType = await takeTokensFromLink();
+  if (linkType === "recovery") fluid.show(document.getElementById("recovery"), { scale: 0.96, blur: 8 });
+
+  // Signed in from before this update, or status may have changed: ask again (quietly)
+  if (getSession() && linkType === null) loadMembership().then(renderAccount).catch(function () { /* offline: use the copy */ });
+
+  renderAccount();
+  renderNotify();
+  if (!getSession() && loadEntries().length === 0 && getPref("welcomed", "") !== "1") showWelcome();
+  else showMorning();
+  sync();
+}
+start();
 
 // Coming back to the app (maybe on a new day): check the morning routine again
 document.addEventListener("visibilitychange", function () {
