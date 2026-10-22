@@ -2943,6 +2943,7 @@ async function loadMembership() {
   const session = getSession();
   if (!session) { setMembership(null); return null; }
   const rows = await database("members?select=name,status,role&user_id=eq." + session.userId, {});
+  // No row at all can only mean a brand-new account whose row isn't there yet: pending
   const m = rows && rows[0] ? rows[0] : { name: "", status: "pending", role: "member" };
   setMembership(m);
   renderGate();
@@ -3155,9 +3156,8 @@ document.getElementById("save-name").addEventListener("click", async function ()
   if (!name) { showToast("Type a name first"); return; }
   try {
     await database("rpc/set_my_name", { method: "POST", body: JSON.stringify({ new_name: name }) });
-    const m = getMembership() || {};
-    m.name = name.slice(0, 40);
-    setMembership(m);
+    const m = getMembership();
+    if (m) { m.name = name.slice(0, 40); setMembership(m); }
     renderAccount();
     showToast("Name saved ✓");
   } catch (error) { showToast(error.message); }

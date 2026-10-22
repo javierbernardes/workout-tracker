@@ -23,6 +23,8 @@ create table if not exists public.members (
 );
 
 alter table public.members enable row level security;
+-- The app's signed-in role needs these (the row rules below still decide which rows)
+grant select, update on public.members to authenticated;
 
 -- Two yes/no questions the rules below ask. "security definer" lets them read the
 -- members table even though the caller may not be allowed to.
@@ -50,6 +52,8 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
