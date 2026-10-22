@@ -2612,6 +2612,7 @@ function logWake(time) {
 
 // Show the step that's still needed today, or nothing
 function showMorning() {
+  if (!getSession() || !isApproved()) return;   // locked out: nothing to log yet
   const t = today();
   const needWake = !wakeEntryFor(t) && getPref("wakeSkipped", "") !== t;
   const needWeigh = !loadEntries().some(function (e) {
@@ -3014,9 +3015,27 @@ function setAuthMode(mode) {
   signUpForm.hidden = mode !== "signup";
 }
 
+// Without an approved account the app is locked: no tabs, just the Account box
+function applyAccess() {
+  const locked = !getSession() || !isApproved();
+  document.body.classList.toggle("locked", locked);
+  document.querySelector("nav").hidden = locked;
+  profileForm.hidden = locked;
+  document.getElementById("notify-box").hidden = locked;
+  if (locked) {
+    sections.forEach(function (s) { s.hidden = s.id !== "profile"; });
+  } else {
+    const current = document.querySelector(".tab.active").dataset.section;
+    sections.forEach(function (s) { s.hidden = s.id !== current; });
+    moveTabIndicator(document.querySelector(".tab.active"), true);
+  }
+  return locked;
+}
+
 function renderAccount() {
   const session = getSession();
   const m = getMembership();
+  applyAccess();
   document.getElementById("signed-out").hidden = !!session;
   document.getElementById("signed-in").hidden = !session;
   document.getElementById("members-box").hidden = !session || !isAdmin();
@@ -3262,7 +3281,6 @@ function closeWelcome(mode) {
 }
 document.getElementById("welcome-signup").addEventListener("click", function () { closeWelcome("signup"); });
 document.getElementById("welcome-signin").addEventListener("click", function () { closeWelcome("signin"); });
-document.getElementById("welcome-skip").addEventListener("click", function () { closeWelcome(null); });
 
 // Start: first deal with a link from an email (if that's how the app was opened),
 // then draw everything

@@ -77,11 +77,10 @@
       <ol class="welcome-steps">
         <li><strong>Add it to your home screen</strong> — in Safari tap Share, then "Add to Home Screen". That's what makes reminders work.</li>
         <li><strong>Create an account</strong> and confirm your email.</li>
-        <li><strong>Wait for Javier's OK</strong> — new accounts are approved by hand.</li>
+        <li><strong>Wait for Javier's OK</strong> — new accounts are approved by hand. Until then the app stays locked.</li>
       </ol>
       <button type="button" id="welcome-signup" class="big-button">Create account</button>
       <button type="button" id="welcome-signin" class="link-button">I already have an account</button>
-      <button type="button" id="welcome-skip" class="link-button morning-skip">Just look around</button>
     </div>
   </div>
 
@@ -364,8 +363,8 @@
 
         <!-- Signed out: sign in, or create an account -->
         <div id="signed-out" class="log-form">
-          <p class="hint small">Sign in to save your logs online and see them on all your devices.
-            Until then, they're kept on this device only.</p>
+          <p class="hint small">You need an account to use the app. Your logs are saved online and
+            show up on all your devices.</p>
           <div class="range-buttons" id="auth-mode">
             <button type="button" data-mode="signin" class="active">Sign in</button>
             <button type="button" data-mode="signup">Create account</button>
