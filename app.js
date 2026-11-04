@@ -779,29 +779,87 @@ function updateWeightButtons() {
 
 // ---------- Picking an exercise: six muscle groups, then the exercises ----------
 const EXERCISE_GROUPS = [
-  { name: "Chest", icon: "chest", exercises: ["Bench press", "Incline bench press", "Dumbbell press",
-      "Incline dumbbell press", "Chest fly", "Cable crossover", "Push-up", "Dips"] },
-  { name: "Back", icon: "back", exercises: ["Deadlift", "Pull-up", "Lat pulldown", "Barbell row",
-      "Dumbbell row", "Seated row", "T-bar row", "Face pull"] },
+  { name: "Chest", icon: "chest", exercises: ["Bench press", "Incline bench press", "Decline bench press",
+      "Smith flat bench", "Smith incline press", "Dumbbell press", "Incline dumbbell press", "Chest press machine",
+      "Chest fly", "Pec deck", "Cable crossover", "High to low cable fly", "Low to high cable fly",
+      "Push-up", "Dips"] },
+  { name: "Back", icon: "back", exercises: ["Deadlift", "Rack pull", "Pull-up", "Chin-up", "Lat pulldown",
+      "Close-grip pulldown", "Straight-arm pulldown", "Barbell row", "Dumbbell row", "Seated row",
+      "Seated row machine", "Seated single arm cable row", "T-bar row", "Chest-supported row",
+      "Back extension", "Good morning"] },
   { name: "Arms", icon: "arms", subgroups: [
-      { name: "Biceps", icon: "arms", exercises: ["Bicep curl", "Hammer curl", "Preacher curl", "Incline curl",
-          "Cable curl", "Concentration curl", "Chin-up"] },
-      { name: "Triceps", icon: "arms", exercises: ["Tricep pushdown", "Skull crusher", "Overhead tricep extension",
-          "Close-grip bench press", "Tricep kickback", "Rope pushdown", "Dips"] },
-      { name: "Shoulders", icon: "arms", exercises: ["Shoulder press", "Lateral raise", "Front raise",
-          "Rear delt fly", "Face pull", "Arnold press", "Upright row", "Shrug"] }
+      { name: "Biceps", icon: "arms", exercises: ["Bicep curl", "Hammer curl", "Preacher curl",
+          "Preacher hammer curls", "Bayesian cable curl", "Incline curl", "Cable curl", "EZ-bar curl",
+          "Concentration curl", "Spider curl", "Reverse curl", "Chin-up"] },
+      { name: "Triceps", icon: "arms", exercises: ["Tricep pushdown", "V-bar pushdown", "Rope pushdown",
+          "Skull crusher", "Overhead tricep extension", "Overhead cable tricep extension",
+          "Close-grip bench press", "Tricep kickback", "Tricep dip machine", "Diamond push-up", "Dips"] },
+      { name: "Shoulders", icon: "arms", exercises: ["Shoulder press", "Seated shoulder press",
+          "Dumbbell shoulder press", "Arnold press", "Lateral raise", "Cable lateral raise", "Front raise",
+          "Rear delt fly", "Reverse pec deck", "Face pull", "Upright row", "Shrug"] }
     ] },
-  { name: "Legs", icon: "legs", exercises: ["Squat", "Front squat", "Leg press", "Romanian deadlift", "Lunge",
-      "Bulgarian split squat", "Hip thrust", "Leg extension", "Leg curl", "Calf raise"] },
-  { name: "Abs", icon: "abs", exercises: ["Plank", "Crunch", "Cable crunch", "Hanging leg raise",
+  { name: "Legs", icon: "legs", exercises: ["Squat", "Front squat", "Goblet squat", "Hack squat", "Smith squat",
+      "Leg press", "Romanian deadlift", "Stiff-leg deadlift", "Lunge", "Walking lunge", "Bulgarian split squat",
+      "Step-up", "Hip thrust", "Glute bridge", "Leg extension", "Leg curl", "Seated leg curl", "Calf raise",
+      "Seated calf raise", "Hip abduction", "Hip adduction"] },
+  { name: "Abs", icon: "abs", exercises: ["Plank", "Side plank", "Crunch", "Bicycle crunch", "Cable crunch",
+      "Ab machine crunch", "Sit-up", "Decline sit-up", "Leg raise", "Hanging leg raise", "Hanging knee raise",
       "Russian twist", "Ab wheel rollout", "Mountain climbers", "Dead bug"] },
-  { name: "Other", icon: "stretch", exercises: ["Cat-cow", "World's greatest stretch", "90/90 hip stretch",
-      "Hip flexor stretch", "Hamstring stretch", "Pigeon stretch", "Couch stretch", "Thoracic rotation",
-      "Shoulder dislocates (band)", "Foam rolling"] }
+  { name: "Other", icon: "stretch", exercises: ["Farmer carry", "Kettlebell swing", "Battle ropes", "Box jump",
+      "Burpee", "Sled push", "Cat-cow", "World's greatest stretch", "90/90 hip stretch", "Hip flexor stretch",
+      "Hamstring stretch", "Pigeon stretch", "Couch stretch", "Thoracic rotation", "Shoulder dislocates (band)",
+      "Foam rolling"] }
 ];
 
+// Every exercise with the group it belongs to (for the search and for colours)
+function exerciseIndex() {
+  const list = [];
+  const seen = {};
+  function add(name, groupName) {
+    const key = name.trim().toLowerCase();
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    list.push({ name: name, group: groupName });
+  }
+  EXERCISE_GROUPS.forEach(function (g) {
+    (g.exercises || []).forEach(function (n) { add(n, g.name); });
+    (g.subgroups || []).forEach(function (sub) { sub.exercises.forEach(function (n) { add(n, g.name); }); });
+  });
+  loadEntries().filter(function (e) { return e.type === "weights"; }).forEach(function (e) { add(e.exercise, "Other"); });
+  return list;
+}
+
+// Type in the search box: matching exercises replace the muscle squares
+const exerciseSearch = document.getElementById("exercise-search");
+exerciseSearch.addEventListener("input", function () {
+  const words = exerciseSearch.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const groupGrid = document.getElementById("group-grid");
+  const results = document.getElementById("search-grid");
+  if (!words.length) { groupGrid.hidden = false; results.hidden = true; return; }
+  const matches = exerciseIndex().filter(function (x) {
+    const name = x.name.toLowerCase();
+    return words.every(function (w) { return name.includes(w); });
+  }).slice(0, 24);
+  results.innerHTML = "";
+  matches.forEach(function (x) {
+    results.appendChild(makeSquare(iconForGroup(x.group), x.name, function () { startExercise(x.name); }, x.group));
+  });
+  results.appendChild(makeSquare("pencil", words.length ? 'Add "' + exerciseSearch.value.trim() + '"' : "Something else…",
+    function () { startExercise(exerciseSearch.value.trim()); }));
+  groupGrid.hidden = true;
+  results.hidden = false;
+});
+
+function iconForGroup(groupName) {
+  const g = EXERCISE_GROUPS.find(function (x) { return x.name === groupName; });
+  return g ? g.icon : "stretch";
+}
+
 function renderGroupSquares() {
+  exerciseSearch.value = "";
+  document.getElementById("search-grid").hidden = true;
   const grid = document.getElementById("group-grid");
+  grid.hidden = false;
   grid.innerHTML = "";
   EXERCISE_GROUPS.forEach(function (group) {
     grid.appendChild(makeSquare(group.icon, group.name, function () {

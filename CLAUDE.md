@@ -223,6 +223,11 @@ Just for the user for now, but designed so others can use it later (every entry 
     `EXERCISE_GROUPS`, step `pick-subgroup`, same orange wash); "Log it / Change" button in
     the Today box opens `form-wake` in the sheet (works outside editing: adds `wake-<date>`);
     a sticky timer bar (`.flow-timer`, class `.workout-timer`) at the top of the flow screens.
+    "Workout done" summary (`#summary`, `showWorkoutSummary`: time, sets, lifted, kcal, vs previous
+    workout) after Finish; "This week" strip on the Log home (`renderWeekStrip`, tap → Progress ›
+    Week). Exercise lists expanded (~117, incl. the names Javier had typed: Smith flat bench,
+    Bayesian cable curl, V-bar pushdown…; de-duplicated spellings match case-insensitively) and a
+    search box on "Which muscles?" (`exerciseIndex()`, all words must match; offers Add "…").
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.

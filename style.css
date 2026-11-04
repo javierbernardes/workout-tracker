@@ -1357,3 +1357,14 @@ body.sheet-open { overflow: hidden; }
 /* ---------- "Workout done" screen ---------- */
 .summary-grid { width: 100%; text-align: left; margin: var(--sp-2) 0 0; }
 .summary-grid .stat-value { font-size: var(--fs-xl); letter-spacing: var(--ls-xl); }
+
+/* The exercise search box */
+.search-box {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-left: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0.75rem center;
+}
+.search-box::-webkit-search-cancel-button { -webkit-appearance: none; }

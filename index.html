@@ -476,7 +476,10 @@
       <div id="pick-group" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
         <h2>Which muscles?</h2>
+        <!-- Or type part of a name: the matches replace the squares below -->
+        <input type="search" id="exercise-search" class="search-box" placeholder="Search exercises" autocomplete="off" autocorrect="off" autocapitalize="off">
         <div class="type-grid squares" id="group-grid"></div>
+        <div class="type-grid squares" id="search-grid" hidden></div>
       </div>
 
       <!-- ---------- Arms: Biceps / Triceps / Shoulders (squares, filled in by app.js) ---------- -->
