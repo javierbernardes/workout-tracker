@@ -2046,8 +2046,7 @@ function renderWeight() {
 
   document.getElementById("stat-week").textContent = thisWeek ? thisWeek.average + " " + unit : "–";
   document.getElementById("stat-week-note").textContent = thisWeek
-    ? thisWeek.count + (thisWeek.count === 1 ? " morning weigh-in" : " morning weigh-ins") +
-      ": " + toiletSummary(thisWeek.weighIns)
+    ? "from " + thisWeek.count + (thisWeek.count === 1 ? " morning weigh-in" : " morning weigh-ins")
     : "No morning weigh-ins yet";
 
   if (thisWeek && lastWeek) {
@@ -2057,7 +2056,7 @@ function renderWeight() {
     document.getElementById("stat-change-note").textContent = "Last week: " + lastWeek.average + " " + unit;
   } else {
     document.getElementById("stat-change").textContent = "–";
-    document.getElementById("stat-change-note").textContent = "Needs a morning weigh-in in both weeks";
+    document.getElementById("stat-change-note").textContent = "Needs both weeks";
   }
 
   // --- Only what's inside the chosen range ---
@@ -2133,6 +2132,11 @@ function weightPoint(e, unit) {
     note: toiletNote(e, " · ")
   };
 }
+
+// The "All weigh-ins" card is folded by default; when it opens, the chart gets its size
+document.getElementById("all-weighins").addEventListener("toggle", function () {
+  if (this.open && allChart) allChart.resize();
+});
 
 function drawWeightCharts(shown, weeks, unit) {
   // Chart.js comes from the internet; without a connection, skip the charts
@@ -2383,16 +2387,31 @@ function renderStrength() {
   const order = EXERCISE_GROUPS.map(function (g) { return g.name; }).concat([""]);
   const list = document.getElementById("strength-list");
   list.innerHTML = "";
+  let openGroups = [];
+  try { openGroups = JSON.parse(getPref("strengthOpen", "[]")); } catch (error) { /* none open */ }
   order.forEach(function (groupName) {
     const inGroup = keys.filter(function (key) {
       return groups[key].group === groupName && (!words.length || nameMatches(groups[key].name, words));
     });
     if (!inGroup.length) return;
-    const divider = document.createElement("li");
-    divider.className = "exercise-divider";
-    divider.textContent = groupName || "Your own";
-    list.appendChild(divider);
-    inGroup.forEach(function (key) { list.appendChild(strengthRow(groups[key], unit)); });
+    const label = groupName || "Your own";
+    // Searching shows everything that matches; otherwise a group opens when you tap its header
+    const open = words.length > 0 || openGroups.includes(label);
+    const header = document.createElement("li");
+    header.className = "exercise-divider" + (open ? " open" : "");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "divider-button";
+    button.setAttribute("aria-expanded", String(open));
+    button.append(label + " · " + inGroup.length, icon("chevronRight"));
+    button.addEventListener("click", function () {
+      const now = openGroups.includes(label) ? openGroups.filter(function (g) { return g !== label; }) : openGroups.concat([label]);
+      setPref("strengthOpen", JSON.stringify(now));
+      renderStrength();
+    });
+    header.appendChild(button);
+    list.appendChild(header);
+    if (open) inGroup.forEach(function (key) { list.appendChild(strengthRow(groups[key], unit)); });
   });
 }
 

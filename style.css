@@ -1482,3 +1482,50 @@ body.sheet-open { overflow: hidden; }
 
 /* Weigh-ins that weren't morning ones are shown a little quieter in the 1-week table */
 #weekly-table tr.not-morning td { color: var(--muted); }
+
+/* ---------- Folded cards and group headers (tap to open) ---------- */
+details.fold > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  margin-right: 0.3rem;
+}
+details.fold[open] > summary::after { transform: rotate(-135deg); margin-top: 0.3rem; }
+details.fold[open] > summary { margin-bottom: var(--sp-2); }
+
+.exercise-divider { margin: var(--sp-2) 0 0; }
+.divider-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--sp-3) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: var(--ls-md);
+  cursor: pointer;
+}
+.divider-button:active { transform: none; background: var(--card-press); }
+.divider-button .icon-wrap { color: var(--muted); transition: transform 150ms ease-out; }
+.exercise-divider.open .divider-button .icon-wrap { transform: rotate(90deg); }
+.exercise-divider.open .divider-button { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+.exercise-divider.open + .exercise-row { border-top-left-radius: 0; border-top-right-radius: 0; }
+@media (prefers-reduced-motion: reduce) { .divider-button .icon-wrap { transition: none; } }
