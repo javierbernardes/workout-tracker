@@ -25,6 +25,8 @@ const ICON_PATHS = {
   calendar: "M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM16 3v4M8 3v4M3 11h18",
   chevronRight: "M9 6l6 6-6 6",
   more: "M6 12h.01M12 12h.01M18 12h.01",
+  trophy: "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a1 1 0 0 0-1 1 4 4 0 0 0 4 4M17 6h3a1 1 0 0 1 1 1 4 4 0 0 1-4 4",
+  users: "M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-7 7-7s7 3 7 7M16 4a4 4 0 0 1 0 8M22 21c0-3-2-5.5-5-6.5",
   // Muscle groups
   chest: "M4 10h16M2 8v4M22 8v4M12 10v8M8 18h8",
   back: "M3 5h18M12 5v4M9 12l3-3 3 3M12 9v9M9 21l3-3 3 3",

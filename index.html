@@ -134,6 +134,7 @@
     <button class="tab active" data-section="log" aria-current="page"><span class="tab-icon" data-icon="plus"></span>Log</button>
     <button class="tab" data-section="history"><span class="tab-icon" data-icon="list"></span>History</button>
     <button class="tab" data-section="weight"><span class="tab-icon" data-icon="chart"></span>Progress</button>
+    <button class="tab" data-section="friends"><span class="tab-icon" data-icon="trophy"></span>Friends</button>
     <button class="tab" data-section="profile"><span class="tab-icon" data-icon="user"></span>Profile</button>
   </nav>
 
@@ -342,6 +343,48 @@
           <tbody></tbody>
         </table>
       </div>
+      </div>
+    </section>
+
+    <!-- ============ FRIENDS: this week's and month's challenges, rankings, hall of fame ============ -->
+    <section id="friends" class="section" hidden>
+      <h2>Friends</h2>
+      <p class="hint small" id="friends-status"></p>
+
+      <!-- The two running challenges (filled in by app.js) -->
+      <div id="challenge-cards"></div>
+
+      <h3>Season table <span class="hint small">points this quarter</span></h3>
+      <p class="hint small">Every challenge gives points by rank: 1st of N scorers gets N, the last scorer gets 1.
+        Monthly challenges count double.</p>
+      <ul id="season-list" class="rank-list"></ul>
+
+      <h3>Hall of fame</h3>
+      <ul id="fame-list" class="fame-list"></ul>
+      <p class="hint small" id="fame-empty" hidden>No finished challenges yet. The first week closes on Sunday night.</p>
+
+      <!-- Only the admin sees this -->
+      <div id="challenge-admin" class="log-form account" hidden>
+        <h2>Change a challenge</h2>
+        <p class="hint small">Challenges rotate on their own; use this to replace the current one.</p>
+        <label>Which one
+          <select id="admin-period">
+            <option value="week">This week's</option>
+            <option value="month">This month's</option>
+          </select>
+        </label>
+        <label>What to count
+          <select id="admin-metric">
+            <option value="workouts">Most workouts</option>
+            <option value="active_days">Most active days</option>
+            <option value="exercise_minutes">Most minutes of exercise</option>
+            <option value="sports">Most sports sessions</option>
+            <option value="streak">Longest streak of active days</option>
+            <option value="early_wakeups">Most wake-ups before 7:30</option>
+            <option value="weigh_in_days">Most morning weigh-ins</option>
+          </select>
+        </label>
+        <button type="button" id="admin-set" class="secondary">Set challenge</button>
       </div>
     </section>
 

@@ -512,6 +512,7 @@ tabs.forEach(function (tab) {
     fluid.show(document.getElementById(target), { y: 8 }, { duration: 0.25 });
     if (target === "history") renderHistory();
     if (target === "weight") renderProgress();
+    if (target === "friends") renderFriends();
   });
 });
 
@@ -3565,6 +3566,176 @@ document.getElementById("delete-account").addEventListener("click", function () 
       showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
     }
   });
+});
+
+// =====================================================
+//  FRIENDS: challenges, rankings, season table, hall of fame
+//  Everything comes from three server functions (friends_overview, season_table,
+//  hall_of_fame) that only ever share names and scores. A copy is kept on the
+//  device so the tab shows something when offline.
+// =====================================================
+
+const METRIC_NAMES = {
+  workouts: "Most workouts", active_days: "Most active days", exercise_minutes: "Most minutes of exercise",
+  sports: "Most sports sessions", streak: "Longest streak of active days",
+  early_wakeups: "Most wake-ups before 7:30", weigh_in_days: "Most morning weigh-ins"
+};
+
+function ordinal(n) {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function scoreText(score, unit) {
+  const n = Number(score);
+  return (Number.isInteger(n) ? n : round1(n)).toLocaleString("en-US") + (unit ? " " + unit : "");
+}
+
+async function renderFriends() {
+  const status = document.getElementById("friends-status");
+  if (!isApproved()) { status.textContent = "Available once you're approved."; return; }
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("friends-cache")); } catch (error) { /* none */ }
+  if (cached) drawFriends(cached);
+  status.textContent = cached ? "Updating…" : "Loading…";
+  try {
+    const results = await Promise.all([
+      database("rpc/friends_overview", { method: "POST", body: "{}" }),
+      database("rpc/season_table", { method: "POST", body: "{}" }),
+      database("rpc/hall_of_fame", { method: "POST", body: "{}" })
+    ]);
+    const data = { overview: results[0], season: results[1], fame: results[2], at: Date.now() };
+    localStorage.setItem("friends-cache", JSON.stringify(data));
+    drawFriends(data);
+    status.textContent = "";
+  } catch (error) {
+    status.textContent = (error instanceof TypeError ? "Offline" : error.message) +
+      (cached ? " · showing the last copy" : "");
+  }
+}
+
+function drawFriends(data) {
+  const me = data.overview.me;
+  const today = data.overview.today;
+
+  // The two running challenges
+  const cards = document.getElementById("challenge-cards");
+  cards.innerHTML = "";
+  (data.overview.challenges || []).forEach(function (c) {
+    const card = document.createElement("div");
+    card.className = "challenge-card " + c.period;
+    const when = document.createElement("div");
+    when.className = "challenge-when";
+    const daysLeft = Math.round((new Date(c.ends_on + "T00:00") - new Date(today + "T00:00")) / 86400000);
+    when.textContent = (c.period === "week" ? "This week" : "This month") + " · " +
+      (daysLeft <= 0 ? "last day" : daysLeft === 1 ? "ends tomorrow" : daysLeft + " days left");
+    const title = document.createElement("div");
+    title.className = "challenge-title";
+    title.textContent = c.title;
+    const you = document.createElement("div");
+    you.className = "challenge-you";
+    const mine = (c.scores || []).find(function (s) { return s.user_id === me; });
+    const leader = (c.scores || [])[0];
+    if (mine) {
+      you.textContent = Number(mine.score) > 0
+        ? "You're " + ordinal(mine.rank) + " · " + scoreText(mine.score, c.unit) +
+          (mine.rank > 1 && leader ? " · " + scoreText(Number(leader.score) - Number(mine.score), c.unit) + " behind" : "")
+        : "Nothing counted yet · log something to get on the board";
+    }
+    card.append(when, title, you, rankingList(c.scores || [], me, c.unit, 5));
+    cards.appendChild(card);
+  });
+
+  // Season table
+  const season = document.getElementById("season-list");
+  season.innerHTML = "";
+  (data.season || []).forEach(function (row, i) {
+    const li = rankRow(i + 1, row.name, row.user_id === me, row.points + (row.points === 1 ? " pt" : " pts"));
+    if (row.wins > 0) {
+      const t = document.createElement("span");
+      t.className = "trophies";
+      t.append(icon("trophy"), " " + row.wins);
+      li.insertBefore(t, li.querySelector(".score"));
+    }
+    season.appendChild(li);
+  });
+
+  // Hall of fame
+  const fame = document.getElementById("fame-list");
+  fame.innerHTML = "";
+  document.getElementById("fame-empty").hidden = (data.fame || []).length > 0;
+  (data.fame || []).forEach(function (f) {
+    const li = document.createElement("li");
+    li.className = "fame-row";
+    const line = document.createElement("div");
+    line.className = "fame-title";
+    line.append(icon("trophy"), " " + ((f.winners || []).join(" & ") || "Nobody") +
+      (f.top_score ? " · " + scoreText(f.top_score, f.unit) : ""));
+    const sub = document.createElement("div");
+    sub.className = "hint small";
+    sub.textContent = f.title + " · " + (f.period === "week" ? "week of " : "") + formatDate(f.starts_on) +
+      (f.my_rank ? " · you: " + ordinal(f.my_rank) + ", " + f.my_points + " pts" : "");
+    li.append(line, sub);
+    fame.appendChild(li);
+  });
+
+  document.getElementById("challenge-admin").hidden = !isAdmin();
+}
+
+// A ranking: podium colours, your own row highlighted, "show all" beyond the first few
+function rankingList(scores, me, unit, limit) {
+  const list = document.createElement("ul");
+  list.className = "rank-list";
+  const mineIndex = scores.findIndex(function (s) { return s.user_id === me; });
+  const draw = function (all) {
+    list.innerHTML = "";
+    scores.forEach(function (s, i) {
+      if (!all && i >= limit && i !== mineIndex) return;
+      list.appendChild(rankRow(s.rank, s.name, s.user_id === me, scoreText(s.score, unit)));
+    });
+    if (!all && scores.length > limit) {
+      const more = document.createElement("li");
+      more.className = "rank-more";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "link-button";
+      b.textContent = "Show all " + scores.length;
+      b.addEventListener("click", function () { draw(true); });
+      more.appendChild(b);
+      list.appendChild(more);
+    }
+  };
+  draw(false);
+  return list;
+}
+
+function rankRow(rank, name, isMe, scoreLabel) {
+  const li = document.createElement("li");
+  li.className = "rank-row" + (rank === 1 ? " gold" : rank === 2 ? " silver" : rank === 3 ? " bronze" : "") + (isMe ? " me" : "");
+  const r = document.createElement("span");
+  r.className = "rank";
+  r.textContent = rank;
+  const who = document.createElement("span");
+  who.className = "who";
+  who.textContent = isMe ? name + " (you)" : name;
+  const score = document.createElement("span");
+  score.className = "score";
+  const strong = document.createElement("strong");
+  strong.textContent = scoreLabel.split(" ")[0];
+  score.append(strong, scoreLabel.slice(scoreLabel.indexOf(" ")));
+  li.append(r, who, score);
+  return li;
+}
+
+// Admin: replace this week's or month's challenge
+document.getElementById("admin-set").addEventListener("click", async function () {
+  const period = document.getElementById("admin-period").value;
+  const metric = document.getElementById("admin-metric").value;
+  try {
+    await database("rpc/set_current_challenge", { method: "POST", body: JSON.stringify({ p_period: period, p_metric: metric }) });
+    showToast((period === "week" ? "This week" : "This month") + ": " + METRIC_NAMES[metric] + " ✓");
+    renderFriends();
+  } catch (error) { showToast(error.message); }
 });
 
 // ---------- Members (admin only): approve or decline people ----------

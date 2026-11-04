@@ -225,7 +225,21 @@ Just for the user for now, but designed so others can use it later (every entry 
      Site URL + Redirect URL = the app address; sign-up → email → link opens the app →
      waiting → approve: verified. The app also passes ?redirect_to=<app address> on signup
      and recover. Changing the sender later = redo the SMTP settings only.
-   - On hold (user's choice, 2026-11-04): minigames/challenges.
+11. ✅ Friends tab (2026-11-04, designed with the user for 10–15 friends). `supabase-friends.sql`:
+    tables `challenges` (period week/month, starts_on, ends_on, metric, title, closed),
+    `challenge_results` (score, rank, points), `challenge_positions` (for overtake pushes);
+    `metric_score()` counts from entries (workouts, sports, active_days, exercise_minutes,
+    weigh_in_days, early_wakeups [< 07:30], streak); `ensure_current_challenges()` rotates
+    metrics by week/month number; `close_finished_challenges()` ranks (standard competition
+    ranking), points = (N scorers − rank + 1), monthly ×2, 0 if no score; RPCs for the app:
+    `friends_overview()`, `season_table()` (this quarter: points + wins), `hall_of_fame()`,
+    `set_current_challenge(period, metric)` (admin). `app_today()` = America/New_York. Cron
+    `challenges-hourly` (minute 7). Notifications via morning-reminder v4: `challenge_started`
+    (trigger on insert, everyone), `challenge_closed` (each participant with rank/points),
+    `overtaken` (dropped out of top 3, max once/day). App: 5th tab Friends (`renderFriends`,
+    cached in localStorage `friends-cache`), cards for week + month with your position and the
+    ranking (podium colours, your row pinned, Show all), season table with trophies, hall of
+    fame, admin "Change a challenge" card. Parked: team / head-to-head weeks.
 
 10. 🟡 Daily-use tweaks (2026-11-04): Arms → Biceps / Triceps / Shoulders (`subgroups` in
     `EXERCISE_GROUPS`, step `pick-subgroup`, same orange wash); "Log it / Change" button in
