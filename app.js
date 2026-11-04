@@ -3692,7 +3692,7 @@ document.getElementById("delete-account").addEventListener("click", function () 
 // =====================================================
 
 const METRIC_NAMES = {
-  workouts: "Most workouts", active_days: "Most active days", calories: "Most calories burned",
+  workouts: "Most workouts", active_days: "Most active days", calories: "Most effort",
   sports: "Most sports sessions", streak: "Longest streak of active days"
 };
 
@@ -3829,7 +3829,7 @@ function drawFriends(data) {
     if (c.metric === "calories") {
       const note = document.createElement("p");
       note.className = "hint small";
-      note.textContent = "Leveled for body size: exercise calories per kg, counted as if everyone weighed 75 kg. Resting burn doesn't count.";
+      note.textContent = "Effort points come from how hard and how long you train (workouts and sports), leveled for body size so everyone competes equally.";
       card.appendChild(note);
     }
     cards.appendChild(card);

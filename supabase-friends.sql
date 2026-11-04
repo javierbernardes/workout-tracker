@@ -363,3 +363,4 @@ grant execute on function public.month_points() to authenticated;
 -- (metric_title, metric_unit, metric_score and ensure_current_challenges replaced accordingly).
 -- 'calories' is leveled for body weight: sum(data.kcalPerKg) × 75 (the app saves kcal and
 -- kcalPerKg on every workout/sport; exercise only, no resting burn).
+-- Shown as 'Most effort' in 'effort pts' = sum(kcalPerKg) × 10 (not as calories, to avoid confusion).

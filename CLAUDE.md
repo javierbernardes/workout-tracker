@@ -252,7 +252,8 @@ Just for the user for now, but designed so others can use it later (every entry 
     weigh-ins removed); metric `calories` sums `data.kcal`, which the app now writes into every
     workout and sports entry (`stampKcal` after finish/save/edit; `stampAllKcal` once per device,
     pref `kcalStamped`, now "3"). The calories challenge is leveled: entries also carry
-    `kcalPerKg`; metric_score sums it × 75 kg (exercise only; BMR never included). Friends view =
+    `kcalPerKg`; shown as "Most effort" in "effort pts" = sum(kcalPerKg) × 10 (exercise only; BMR
+    never included; the metric key is still `calories`). Friends view =
     names only (+ trophies), alphabetical.
     Progress › Weight: ranges 1 wk / 1 mo / 3 mo / 1 yr / All; with "7" the table lists every
     weigh-in of the week (`daily` branch in renderWeight); tile notes shortened; the "All
