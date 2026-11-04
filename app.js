@@ -2287,8 +2287,10 @@ function strengthSessions(logs) {
   });
 }
 
+// "8×60, 8×65" — or just "10, 9" for body-weight exercises (no weight to show)
 function setsText(sets) {
-  return sets.map(function (s) { return s.reps + "×" + s.weight; }).join(", ");
+  const repsOnly = sets.every(function (s) { return !s.weight; });
+  return sets.map(function (s) { return repsOnly ? String(s.reps) : s.reps + "×" + s.weight; }).join(", ");
 }
 
 function renderStrength() {
