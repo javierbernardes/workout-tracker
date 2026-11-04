@@ -1479,3 +1479,6 @@ body.sheet-open { overflow: hidden; }
   background: var(--card);
 }
 #fv-friends h2, #fv-fame h2 { margin-top: var(--sp-1); }
+
+/* Weigh-ins that weren't morning ones are shown a little quieter in the 1-week table */
+#weekly-table tr.not-morning td { color: var(--muted); }

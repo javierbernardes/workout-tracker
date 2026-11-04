@@ -1950,7 +1950,7 @@ function renderHistory() {
 const LB_PER_KG = 2.20462;
 let weightRangeDays = getPref("weightRange", "91");   // how far back to show; "" = all
 if (weightRangeDays === "all") weightRangeDays = "";
-if (!["30", "91", "365", ""].includes(weightRangeDays)) weightRangeDays = "91";
+if (!["7", "30", "91", "365", ""].includes(weightRangeDays)) weightRangeDays = "91";
 let morningChart, allChart;                            // the two charts, once drawn
 
 // A Date -> "2026-10-20" (in your time zone)
@@ -2068,9 +2068,38 @@ function renderWeight() {
   const shown = weighIns.filter(function (e) { return e.date >= from; });
   const shownWeeks = weeks.filter(function (w) { return w.week >= weekStart(from || w.week); });
 
-  // --- The weekly table, newest first ---
+  // --- The table, newest first: weekly averages, or every weigh-in when "1 week" is chosen ---
   const tbody = document.querySelector("#weekly-table tbody");
   tbody.innerHTML = "";
+  const daily = weightRangeDays === "7";
+  document.getElementById("weekly-table-title").textContent = daily ? "Weigh-ins this week" : "Weekly averages (morning)";
+  document.getElementById("weekly-th-1").textContent = daily ? "Day" : "Week of";
+  document.getElementById("weekly-th-2").textContent = daily ? "Weight" : "Average";
+  document.getElementById("weekly-th-3").textContent = daily ? "When" : "Weigh-ins";
+  if (daily) {
+    shown.slice().reverse().forEach(function (e) {
+      const row = document.createElement("tr");
+      [dayLabel(e.date), round1(weightIn(e, unit)) + " " + unit,
+       (e.morning ? "Morning" : formatTime(entryTime(e))) + toiletNote(e, " · ")].forEach(function (value) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      if (!e.morning) row.className = "not-morning";
+      tbody.appendChild(row);
+    });
+    if (!shown.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.className = "hint";
+      cell.textContent = "No weigh-ins in the last 7 days.";
+      row.appendChild(cell);
+      tbody.appendChild(row);
+    }
+    drawWeightCharts(shown, shownWeeks, unit);
+    return;
+  }
   shownWeeks.slice().reverse().forEach(function (w) {
     const row = document.createElement("tr");
     [formatDate(w.week), w.average + " " + unit, w.count].forEach(function (value) {

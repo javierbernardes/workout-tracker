@@ -315,6 +315,7 @@
 
         <!-- How far back the charts and table go (data-days="" means all) -->
         <div class="range-buttons">
+          <button type="button" data-days="7">1 week</button>
           <button type="button" data-days="30">1 month</button>
           <button type="button" data-days="91">3 months</button>
           <button type="button" data-days="365">1 year</button>
@@ -337,9 +338,9 @@
 
         <p id="chart-offline" class="hint small" hidden>Charts need an internet connection to load.</p>
 
-        <h3>Weekly averages (morning)</h3>
+        <h3 id="weekly-table-title">Weekly averages (morning)</h3>
         <table id="weekly-table">
-          <thead><tr><th>Week of</th><th>Average</th><th>Weigh-ins</th></tr></thead>
+          <thead><tr><th id="weekly-th-1">Week of</th><th id="weekly-th-2">Average</th><th id="weekly-th-3">Weigh-ins</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
