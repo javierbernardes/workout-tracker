@@ -220,7 +220,11 @@ Just for the user for now, but designed so others can use it later (every entry 
      signOut + welcome). Trigger `on_member_created` (members insert → pg_net POST
      {joined: user_id} to morning-reminder) → the function pushes "Someone wants to join" to all
      admin subscriptions (only for pending rows younger than 10 min). morning-reminder is v3.
-     Site URL fix in the dashboard was still unconfirmed (links landed on a 404 on 2026-10-22).
+     2026-11-04 (evening): dashboard done by the user — custom SMTP through Javier's Gmail
+     (sender "Workout Tracker" <jmbg.bego@gmail.com>, app password; email rate limit 30/h),
+     Site URL + Redirect URL = the app address; sign-up → email → link opens the app →
+     waiting → approve: verified. The app also passes ?redirect_to=<app address> on signup
+     and recover. Changing the sender later = redo the SMTP settings only.
    - On hold (user's choice, 2026-11-04): minigames/challenges.
 
 10. 🟡 Daily-use tweaks (2026-11-04): Arms → Biceps / Triceps / Shoulders (`subgroups` in
