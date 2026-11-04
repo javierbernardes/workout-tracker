@@ -297,3 +297,11 @@ end;
 $$;
 create trigger on_challenge_created after insert on public.challenges
   for each row execute function public.notify_challenge_started();
+
+-- Only signed-in, approved members may call the app functions; the trigger helpers nobody
+revoke execute on function public.friends_overview(), public.hall_of_fame(), public.season_table(),
+  public.set_current_challenge(text, text) from public, anon;
+revoke execute on function public.notify_challenge_started() from public, anon, authenticated;
+alter function public.metric_title(text) set search_path = public;
+alter function public.metric_unit(text) set search_path = public;
+alter function public.app_today() set search_path = public;
