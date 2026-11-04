@@ -1088,15 +1088,17 @@ function stampKcal(id) {
   if (!e || (e.type !== "workout" && e.type !== "sports")) return;
   const kg = weightKgOn(e.date);
   const kcal = kg ? Math.round(entryKcal(e, kg)) : 0;
-  if (e.kcal !== kcal) updateEntry(e.id, { kcal: kcal });
+  // Also per kg of body weight, so the Friends challenge can level people of different sizes
+  const perKg = kg ? Math.round(entryKcal(e, kg) / kg * 1000) / 1000 : 0;
+  if (e.kcal !== kcal || e.kcalPerKg !== perKg) updateEntry(e.id, { kcal: kcal, kcalPerKg: perKg });
 }
 
 function stampAllKcal() {
-  if (getPref("kcalStamped", "") === "2") return;
+  if (getPref("kcalStamped", "") === "3") return;
   loadEntries().forEach(function (e) {
-    if ((e.type === "workout" || e.type === "sports") && e.kcal === undefined) stampKcal(e.id);
+    if ((e.type === "workout" || e.type === "sports") && (e.kcal === undefined || e.kcalPerKg === undefined)) stampKcal(e.id);
   });
-  setPref("kcalStamped", "2");
+  setPref("kcalStamped", "3");
 }
 
 // Put an entry's values into its form
@@ -3824,6 +3826,12 @@ function drawFriends(data) {
         : "Nothing counted yet · log something to get on the board";
     }
     card.append(when, title, you, rankingList(c.scores || [], me, c.unit, 5));
+    if (c.metric === "calories") {
+      const note = document.createElement("p");
+      note.className = "hint small";
+      note.textContent = "Leveled for body size: exercise calories per kg, counted as if everyone weighed 75 kg. Resting burn doesn't count.";
+      card.appendChild(note);
+    }
     cards.appendChild(card);
   });
 
