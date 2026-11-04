@@ -245,7 +245,7 @@ Just for the user for now, but designed so others can use it later (every entry 
     2026-11-04 evening: NO monthly challenges any more (ensure_current_challenges creates only
     weekly; the open November monthly row was deleted). Leaderboard view has two chips (pref
     `boardPeriod`): "This week" = the challenge card; "This month" = `month_points()` =
-    weekly-challenge points closed in the month + `activity_points()` (2 per workout, 2 per
+    weekly-challenge points closed in the month + `activity_points()` (5 per workout, 5 per
     sport, 1 per morning weigh-in day, 1 per wake-up). season_table() adds activity points
     for the quarter too. The admin card only offers "This week's".
     Progress › Weight: ranges 1 wk / 1 mo / 3 mo / 1 yr / All; with "7" the table lists every

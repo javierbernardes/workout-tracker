@@ -311,13 +311,13 @@ alter function public.app_today() set search_path = public;
 --  total = weekly challenge points + daily activity points. Applied with CREATE OR REPLACE.
 -- =====================================================
 
--- Points for daily activity: 2 per workout, 2 per sports session, 1 per morning weigh-in day, 1 per logged wake-up
+-- Points for daily activity: 5 per workout, 5 per sports session, 1 per morning weigh-in day, 1 per logged wake-up (changed from 2/2/1/1 on 2026-11-04)
 create or replace function public.activity_points(p_user uuid, p_start date, p_end date)
 returns int language sql stable security definer set search_path = public as $$
   with s as (select to_char(p_start, 'YYYY-MM-DD') as a, to_char(p_end, 'YYYY-MM-DD') as b)
   select (
-    2 * (select count(*) from entries, s where user_id = p_user and type = 'workout' and date between s.a and s.b) +
-    2 * (select count(*) from entries, s where user_id = p_user and type = 'sports' and date between s.a and s.b) +
+    5 * (select count(*) from entries, s where user_id = p_user and type = 'workout' and date between s.a and s.b) +
+    5 * (select count(*) from entries, s where user_id = p_user and type = 'sports' and date between s.a and s.b) +
     1 * (select count(distinct date) from entries, s where user_id = p_user and type = 'bodyweight'
          and coalesce((data->>'morning')::boolean, true) and date between s.a and s.b) +
     1 * (select count(*) from entries, s where user_id = p_user and type = 'wake' and date between s.a and s.b)
