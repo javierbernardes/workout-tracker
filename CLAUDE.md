@@ -255,12 +255,14 @@ Just for the user for now, but designed so others can use it later (every entry 
     `kcalPerKg`; shown as "Most effort" in "effort pts" = sum(kcalPerKg) × 10 (exercise only; BMR
     never included; the metric key is still `calories`). Friends view =
     names only (+ trophies), alphabetical.
-    Profile tab (2026-11-04) has three views (segmented, pref `profileView`): Profile (name card +
-    profile form), Settings (`#settings-box`: appearance system/light/dark via
-    `html[data-theme]` + pref `theme`; weight unit pref `weightUnit`; morning routine on/off pref
+    Profile tab (2026-11-04) is a menu (`#profile-menu`, rows → pages that slide in, ‹ back;
+    `showProfileView(direction)`): Profile (name card + profile form), Settings (`#settings-box`:
+    appearance system/light/dark via `html[data-theme]` + pref `theme`; weight unit pref
+    `weightUnit`; week starts on Monday/Sunday pref `weekStartsOn` used by `weekStart()` for the
+    user's own views only — server challenges are always Mon–Sun; morning routine on/off pref
     `morningRoutine` — showMorning skips when off; plus the Morning notification card), Account
-    (sign-in/out, password, privacy, delete, Members for admins). Locked out → only Account, no
-    switch. CSS: dark variables live in `@media (prefers-color-scheme: dark) :root:not([data-theme=light])`
+    (sign-in/out, password, privacy, "Export my data" = JSON via share sheet or download, delete,
+    Members for admins). Locked out → only the Account page, no menu, no back. CSS: dark variables live in `@media (prefers-color-scheme: dark) :root:not([data-theme=light])`
     AND `:root[data-theme=dark]` (keep both in sync). Language: not offered (would need ~300 strings).
     Progress › Weight: ranges 1 wk / 1 mo / 3 mo / 1 yr / All; with "7" the table lists every
     weigh-in of the week (`daily` branch in renderWeight); tile notes shortened; the "All

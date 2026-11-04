@@ -1556,4 +1556,31 @@ details.fold[open] > summary { margin-bottom: var(--sp-2); }
 .setting { display: flex; flex-direction: column; gap: var(--sp-2); }
 .setting-label { font-size: var(--fs-sm); letter-spacing: var(--ls-sm); color: var(--muted); }
 .setting .range-buttons { margin-bottom: 0; }
-#profile-views { margin-bottom: var(--sp-4); }
+
+
+/* ---------- Profile menu ---------- */
+.menu-list { list-style: none; margin: 0; padding: 0; }
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-row:active { transform: none; background: var(--card-press); }
+.menu-icon { color: var(--accent); display: inline-flex; }
+.menu-icon .icon { width: 1.5rem; height: 1.5rem; }
+.menu-text { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.menu-text strong { font-size: var(--fs-md); }
+.menu-row > .icon-wrap:last-child, .menu-row > span:last-child { color: var(--muted); }
+#profile-menu h2 { margin-top: var(--sp-1); }
+#profile-menu-who { margin: 0 0 var(--sp-3); }
+.profile-view .page-head { margin-bottom: var(--sp-3); }

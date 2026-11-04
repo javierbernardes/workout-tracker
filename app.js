@@ -513,6 +513,7 @@ tabs.forEach(function (tab) {
     if (target === "history") renderHistory();
     if (target === "weight") renderProgress();
     if (target === "friends") renderFriends();
+    if (target === "profile") { profileView = null; showProfileView(0); }
   });
 });
 
@@ -1993,7 +1994,9 @@ function shiftDate(dateText, days) {
 // The Monday of that date's week, e.g. Thu "2026-10-22" -> Mon "2026-10-19"
 function weekStart(dateText) {
   const d = new Date(dateText + "T00:00");
-  return shiftDate(dateText, -((d.getDay() + 6) % 7));
+  // Your choice in Settings: weeks start on Monday (default) or Sunday
+  const back = getPref("weekStartsOn", "mon") === "sun" ? d.getDay() : (d.getDay() + 6) % 7;
+  return shiftDate(dateText, -back);
 }
 
 // A weigh-in in kg or lb (converting if you logged it in the other unit)
@@ -3499,37 +3502,35 @@ function setAuthMode(mode) {
   signUpForm.hidden = mode !== "signup";
 }
 
-// ---------- Profile tab: Profile / Settings / Account ----------
-let profileView = getPref("profileView", "pv-profile");
-document.querySelectorAll("#profile-views button").forEach(function (button) {
+// ---------- Profile tab: a menu, and each row opens its page ----------
+let profileView = null;      // null = the menu; otherwise the open page
+document.querySelectorAll("#profile-menu .menu-row").forEach(function (button) {
   button.addEventListener("click", function () {
     profileView = button.dataset.view;
-    setPref("profileView", profileView);
-    showProfileView();
+    showProfileView(1);
   });
 });
+document.querySelectorAll(".profile-back").forEach(function (button) {
+  button.addEventListener("click", function () { profileView = null; showProfileView(-1); });
+});
 
-function showProfileView() {
+// direction: 1 = a page slides in from the right, -1 = back to the menu, 0 = no slide
+function showProfileView(direction) {
   const locked = !getSession() || !isApproved();
-  const view = locked ? "pv-account" : profileView;    // locked out: only the account view exists
-  document.getElementById("profile-views").hidden = locked;
-  const buttons = document.querySelectorAll("#profile-views button");
-  let chosen = null;
-  buttons.forEach(function (b) {
-    const active = b.dataset.view === view;
-    b.classList.toggle("active", active);
-    if (active) chosen = b;
-  });
-  const indicator = document.querySelector("#profile-views .seg-indicator");
-  const x = chosen.offsetLeft - buttons[0].offsetLeft;
-  const wasOff = indicator.dataset.placed !== "1";
-  indicator.dataset.placed = "1";
-  if (wasOff || locked || document.getElementById("profile").hidden) fluid.jump(fluid.valuesOf(indicator).x, x);
-  else fluid.springTo(fluid.valuesOf(indicator).x, x);
+  const view = locked ? "pv-account" : profileView;    // locked out: only the account page exists
+  const menu = document.getElementById("profile-menu");
+  document.querySelectorAll(".profile-back").forEach(function (b) { b.hidden = locked; });
+  if (!view) {
+    document.querySelectorAll(".profile-view").forEach(function (v) { v.hidden = true; });
+    if (menu.hidden) { if (direction) fluid.show(menu, { x: -40 }, { duration: 0.3 }); else menu.hidden = false; }
+    return;
+  }
+  menu.hidden = true;
   document.querySelectorAll(".profile-view").forEach(function (v) {
-    if (v.id === view) { if (v.hidden) fluid.show(v, { y: 8 }, { duration: 0.25 }); }
+    if (v.id === view) { if (v.hidden) { if (direction) fluid.show(v, { x: 40 * direction }, { duration: 0.3 }); else v.hidden = false; } }
     else v.hidden = true;
   });
+  if (direction) window.scrollTo(0, 0);
 }
 
 // ---------- Settings for this device ----------
@@ -3549,8 +3550,44 @@ function renderSettings() {
   applyTheme();
   const unit = getPref("weightUnit", "kg");
   document.querySelectorAll("#unit-choice button").forEach(function (b) { b.classList.toggle("active", b.dataset.unit === unit); });
+  const start = getPref("weekStartsOn", "mon");
+  document.querySelectorAll("#weekstart-choice button").forEach(function (b) { b.classList.toggle("active", b.dataset.start === start); });
   document.getElementById("morning-routine-toggle").checked = getPref("morningRoutine", "on") !== "off";
+  const m = getMembership();
+  document.getElementById("profile-menu-who").textContent = getSession() ? ((m && m.name) || "") + " · " + getSession().email : "";
 }
+document.querySelectorAll("#weekstart-choice button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    setPref("weekStartsOn", button.dataset.start);
+    renderSettings();
+    renderToday();
+    showToast("Weeks start on " + (button.dataset.start === "sun" ? "Sunday" : "Monday"));
+  });
+});
+
+// Export: a file with every log on this device. On phones this opens the share sheet
+// (save to Files, send to yourself); on computers it downloads.
+document.getElementById("export-data").addEventListener("click", async function () {
+  const entries = loadEntries();
+  const name = "workout-tracker-" + today() + ".json";
+  const text = JSON.stringify({ exportedAt: new Date().toISOString(), entries: entries }, null, 2);
+  const file = new File([text], name, { type: "application/json" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Workout Tracker export" });
+      return;
+    }
+  } catch (error) { if (error.name === "AbortError") return; }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  showToast("Exported " + entries.length + " logs");
+});
 document.querySelectorAll("#unit-choice button").forEach(function (button) {
   button.addEventListener("click", function () {
     setPref("weightUnit", button.dataset.unit);
@@ -3570,7 +3607,7 @@ function applyAccess() {
   const locked = !getSession() || !isApproved();
   document.body.classList.toggle("locked", locked);
   document.querySelector("nav").hidden = locked;
-  showProfileView();
+  showProfileView(0);
   if (locked) {
     sections.forEach(function (s) { s.hidden = s.id !== "profile"; });
   } else {

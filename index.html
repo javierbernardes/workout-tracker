@@ -416,16 +416,20 @@
 
     <!-- ============ PROFILE: height, age, sex (for calorie estimates) ============ -->
     <section id="profile" class="section" hidden>
-      <!-- Three views; data-view says which one each button shows -->
-      <div id="profile-views" class="segmented">
-        <span class="seg-indicator" aria-hidden="true"></span>
-        <button type="button" data-view="pv-profile">Profile</button>
-        <button type="button" data-view="pv-settings">Settings</button>
-        <button type="button" data-view="pv-account">Account</button>
+      <!-- The menu: each row opens its page (data-view says which) -->
+      <div id="profile-menu">
+        <h2>Profile</h2>
+        <p class="hint small" id="profile-menu-who"></p>
+        <ul class="menu-list">
+          <li><button type="button" class="menu-row" data-view="pv-profile"><span class="menu-icon" data-icon="user"></span><span class="menu-text"><strong>Profile</strong><span class="hint small">Your name, height, birth date, sex</span></span><span data-icon="chevronRight"></span></button></li>
+          <li><button type="button" class="menu-row" data-view="pv-settings"><span class="menu-icon" data-icon="more"></span><span class="menu-text"><strong>Settings</strong><span class="hint small">Appearance, units, week start, morning routine</span></span><span data-icon="chevronRight"></span></button></li>
+          <li><button type="button" class="menu-row" data-view="pv-account"><span class="menu-icon" data-icon="check"></span><span class="menu-text"><strong>Account</strong><span class="hint small">Password, sign out, export, delete</span></span><span data-icon="chevronRight"></span></button></li>
+        </ul>
       </div>
 
       <!-- PROFILE: your name and the details behind the calorie estimates -->
-      <div id="pv-profile" class="profile-view" hidden>
+      <div id="pv-profile" class="profile-view page" hidden>
+        <div class="page-head"><button type="button" class="back profile-back" aria-label="Back to the menu">‹</button><h2>Profile</h2></div>
         <div id="name-box" class="log-form">
           <h2>Your name</h2>
           <p class="hint small">How your friends see you in the Friends tab.</p>
@@ -472,7 +476,8 @@
       </div>
 
       <!-- SETTINGS: how the app looks and behaves on this device, plus the morning notification -->
-      <div id="pv-settings" class="profile-view" hidden>
+      <div id="pv-settings" class="profile-view page" hidden>
+        <div class="page-head"><button type="button" class="back profile-back" aria-label="Back to the menu">‹</button><h2>Settings</h2></div>
         <div id="settings-box" class="log-form">
           <h2>This device</h2>
           <div class="setting">
@@ -489,6 +494,14 @@
               <button type="button" data-unit="kg">kg</button>
               <button type="button" data-unit="lb">lb</button>
             </div>
+          </div>
+          <div class="setting">
+            <div class="setting-label">Week starts on</div>
+            <div class="range-buttons" id="weekstart-choice">
+              <button type="button" data-start="mon">Monday</button>
+              <button type="button" data-start="sun">Sunday</button>
+            </div>
+            <p class="hint small">For your own Week view and weekly averages. Friends challenges always run Monday to Sunday.</p>
           </div>
           <label class="check">
             <input type="checkbox" id="morning-routine-toggle">
@@ -512,7 +525,8 @@
       </div>
 
       <!-- ACCOUNT: sign in / out, password, members (admin), delete -->
-      <div id="pv-account" class="profile-view" hidden>
+      <div id="pv-account" class="profile-view page" hidden>
+        <div class="page-head"><button type="button" class="back profile-back" aria-label="Back to the menu">‹</button><h2>Account</h2></div>
       <!-- ============ ACCOUNT ============ -->
       <div class="log-form account">
         <h2>Account</h2>
@@ -573,6 +587,8 @@
           <button type="button" id="sign-out" class="secondary">Sign out</button>
           <p class="hint small">Your logs are stored in Javier's Supabase project and only you can see them.
             Javier sees your name and email in the members list, never your logs.</p>
+          <button type="button" id="export-data" class="secondary">Export my data</button>
+          <p class="hint small">Saves a file with every log on this device (your own backup).</p>
           <button type="button" id="delete-account" class="danger-link">Delete my account and all my data</button>
         </div>
       </div>
