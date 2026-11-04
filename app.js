@@ -3325,8 +3325,14 @@ async function authRequest(path, method, body, token) {
 
 // Create an account. The name travels with it and lands in the members table.
 // Returns true if you're signed in right away, false if an email must be confirmed first.
+// Where email links should bring people back to: this very app (not the site's root)
+function appAddress() {
+  return location.origin + location.pathname.replace(/[^/]*$/, "");
+}
+
 async function signUp(name, email, password) {
-  const answer = await authRequest("signup", "POST", { email: email, password: password, data: { name: name } });
+  const answer = await authRequest("signup?redirect_to=" + encodeURIComponent(appAddress()), "POST",
+    { email: email, password: password, data: { name: name } });
   if (!answer.access_token) return false;
   setSessionFrom(answer);
   await loadMembership();
@@ -3475,7 +3481,7 @@ document.getElementById("forgot-password").addEventListener("click", async funct
   const email = signInForm.elements.email.value.trim();
   if (!email) { showToast("Type your email above first"); return; }
   try {
-    await authRequest("recover", "POST", { email: email, options: { redirect_to: location.href.split("#")[0] } });
+    await authRequest("recover?redirect_to=" + encodeURIComponent(appAddress()), "POST", { email: email });
     showToast("Check your email for the reset link");
   } catch (error) {
     showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
