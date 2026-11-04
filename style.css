@@ -1331,3 +1331,29 @@ body.sheet-open { overflow: hidden; }
   letter-spacing: var(--ls-lg);
   font-weight: 600;
 }
+
+/* ---------- "This week" strip on the Log home ---------- */
+.week-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.week-strip:active { transform: none; background: var(--card-press); }
+.week-strip-title { font-size: var(--fs-xs); letter-spacing: var(--ls-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; }
+.week-strip-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
+.week-tile { display: flex; flex-direction: column; font-size: var(--fs-xs); letter-spacing: var(--ls-xs); line-height: var(--lh-xs); color: var(--muted); }
+.week-tile strong { font-size: var(--fs-lg); letter-spacing: var(--ls-lg); line-height: var(--lh-lg); color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ---------- "Workout done" screen ---------- */
+.summary-grid { width: 100%; text-align: left; margin: var(--sp-2) 0 0; }
+.summary-grid .stat-value { font-size: var(--fs-xl); letter-spacing: var(--ls-xl); }

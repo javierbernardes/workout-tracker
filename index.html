@@ -84,6 +84,18 @@
     </div>
   </div>
 
+  <!-- ============ WORKOUT DONE: the summary after Finish ============ -->
+  <div id="summary" class="morning" hidden>
+    <div class="morning-step">
+      <div class="morning-icon" data-icon="check"></div>
+      <h1>Workout done</h1>
+      <p class="hint" id="summary-sub"></p>
+      <div class="stat-grid summary-grid" id="summary-stats"></div>
+      <p class="hint small" id="summary-compare"></p>
+      <button type="button" id="summary-done" class="big-button">Done</button>
+    </div>
+  </div>
+
   <!-- ============ WAITING FOR APPROVAL ============ -->
   <div id="gate" class="morning" hidden>
     <div class="morning-step">
@@ -141,6 +153,12 @@
             <button type="button" id="wake-button" class="link-button" data-form="form-wake">Log it</button>
           </div>
         </div>
+
+        <!-- This week at a glance (tap to open Progress › Week) -->
+        <button type="button" id="week-strip" class="week-strip" aria-label="This week, open Progress">
+          <span class="week-strip-title">This week</span>
+          <span class="week-strip-tiles" id="week-strip-tiles"></span>
+        </button>
 
         <!-- No workout running: the big Start card -->
         <div id="no-workout">

@@ -671,7 +671,7 @@ const formSheet = makeSheet(document.getElementById("sheet"), document.getElemen
     if (editing) stopEditing(true);     // dragged away mid-edit: cancel the edit
     sheetStack = [];
     renderCurrentWorkout();
-    updateWeightButtons();
+    renderToday();     // the week strip and calories may have changed
   }
 });
 
@@ -729,7 +729,7 @@ function closeFlow() {
   }
   if (editing) stopEditing(true);
   renderCurrentWorkout();
-  updateWeightButtons();
+  renderToday();     // the week strip and calories may have changed
 }
 
 // Go one step deeper (remembering where we came from)
@@ -1185,8 +1185,68 @@ document.getElementById("form-finish").addEventListener("submit", function (even
     notes: f.notes.value.trim()
   });
   setActiveWorkout(null);
-  showToast("Workout saved ✓");
   closeForms();
+  showWorkoutSummary(workout.id);
+});
+
+// ---------- The "Workout done" screen ----------
+// A small reward and a last look at the numbers: minutes, exercises, sets,
+// weight lifted, calories, and how that compares with your previous workout.
+function showWorkoutSummary(workoutId) {
+  const all = loadEntries();
+  const workout = all.find(function (e) { return e.id === workoutId; });
+  if (!workout) return;
+  const parts = all.filter(function (e) { return e.workoutId === workoutId; });
+  const totals = workoutTotals(workoutId);
+  const kg = weightKgOn(workout.date);
+  const kcal = kg ? workoutKcal(workout, kg) : 0;
+
+  document.getElementById("summary-sub").textContent =
+    parts.length + (parts.length === 1 ? " exercise" : " exercises") + " · " + formatTime(workout.time) +
+    (workout.notes ? " · " + workout.notes : "");
+
+  const stats = document.getElementById("summary-stats");
+  stats.innerHTML = "";
+  [["Time", workout.minutes + " min"],
+   ["Sets", String(totals.sets)],
+   ["Lifted", totals.volume ? totals.volume.toLocaleString("en-US") + " " + totals.unit : "–"],
+   ["Calories", kcal ? "≈ " + kcalText(kcal) : "–"]
+  ].forEach(function (pair) {
+    const tile = document.createElement("div");
+    tile.className = "stat";
+    const label = document.createElement("div");
+    label.className = "stat-label";
+    label.textContent = pair[0];
+    const value = document.createElement("div");
+    value.className = "stat-value";
+    value.textContent = pair[1];
+    tile.append(label, value);
+    stats.appendChild(tile);
+  });
+
+  // Compared with the workout before this one
+  const previous = all
+    .filter(function (e) { return e.type === "workout" && e.id !== workoutId && (e.date + entryTime(e)) < (workout.date + entryTime(workout)); })
+    .sort(function (a, b) { return (b.date + entryTime(b)).localeCompare(a.date + entryTime(a)); })[0];
+  const compare = document.getElementById("summary-compare");
+  if (previous) {
+    const prevTotals = workoutTotals(previous.id);
+    const bits = [];
+    const dMin = workout.minutes - previous.minutes;
+    bits.push((dMin >= 0 ? "+" : "−") + Math.abs(dMin) + " min");
+    if (totals.volume || prevTotals.volume) {
+      const dVol = totals.volume - prevTotals.volume;
+      bits.push((dVol >= 0 ? "+" : "−") + Math.abs(dVol).toLocaleString("en-US") + " " + totals.unit);
+    }
+    compare.textContent = "vs your last workout (" + dayLabel(previous.date) + "): " + bits.join(" · ");
+  } else {
+    compare.textContent = "Your first workout here. The next one gets a comparison.";
+  }
+  fluid.show(document.getElementById("summary"), { scale: 0.96, blur: 8 });
+}
+
+document.getElementById("summary-done").addEventListener("click", function () {
+  fluid.hide(document.getElementById("summary"), { scale: 0.96, blur: 8 });
 });
 
 document.getElementById("discard-workout").addEventListener("click", function () {
@@ -2597,8 +2657,42 @@ function nowMinutes() {
 }
 
 // The "Burned today so far" box at the top of the Log tab
+// "This week" strip on the Log home: workouts, weight lifted, sports, weigh-ins (Mon → today)
+function renderWeekStrip() {
+  const t = today();
+  const monday = weekStart(t);
+  const all = loadEntries().filter(function (e) { return e.date >= monday && e.date <= t; });
+  const workouts = all.filter(function (e) { return e.type === "workout"; });
+  const lifted = workouts.reduce(function (sum, w) { return sum + workoutTotals(w.id).volume; }, 0);
+  const sports = all.filter(function (e) { return e.type === "sports"; }).length;
+  const weighIns = all.filter(function (e) { return e.type === "bodyweight" && e.morning; }).length;
+  const unit = getPref("weightUnit", "kg");
+  const tiles = document.getElementById("week-strip-tiles");
+  tiles.innerHTML = "";
+  [[String(workouts.length), workouts.length === 1 ? "workout" : "workouts"],
+   [lifted ? lifted.toLocaleString("en-US") : "0", unit + " lifted"],
+   [String(sports), sports === 1 ? "sport" : "sports"],
+   [String(weighIns), weighIns === 1 ? "weigh-in" : "weigh-ins"]
+  ].forEach(function (pair) {
+    const tile = document.createElement("span");
+    tile.className = "week-tile";
+    const n = document.createElement("strong");
+    n.textContent = pair[0];
+    tile.append(n, " ", pair[1]);
+    tiles.appendChild(tile);
+  });
+}
+
+document.getElementById("week-strip").addEventListener("click", function () {
+  progressView = "view-week";
+  setPref("progressView", progressView);
+  weekOffset = 0;
+  document.querySelector('.tab[data-section="weight"]').click();
+});
+
 function renderToday() {
   updateWeightButtons();
+  renderWeekStrip();
   const t = today();
   const wake = wakeEntryFor(t);
   document.getElementById("today-wake-text").textContent = wake
