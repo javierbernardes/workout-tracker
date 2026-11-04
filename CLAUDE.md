@@ -255,6 +255,13 @@ Just for the user for now, but designed so others can use it later (every entry 
     `kcalPerKg`; shown as "Most effort" in "effort pts" = sum(kcalPerKg) × 10 (exercise only; BMR
     never included; the metric key is still `calories`). Friends view =
     names only (+ trophies), alphabetical.
+    Profile tab (2026-11-04) has three views (segmented, pref `profileView`): Profile (name card +
+    profile form), Settings (`#settings-box`: appearance system/light/dark via
+    `html[data-theme]` + pref `theme`; weight unit pref `weightUnit`; morning routine on/off pref
+    `morningRoutine` — showMorning skips when off; plus the Morning notification card), Account
+    (sign-in/out, password, privacy, delete, Members for admins). Locked out → only Account, no
+    switch. CSS: dark variables live in `@media (prefers-color-scheme: dark) :root:not([data-theme=light])`
+    AND `:root[data-theme=dark]` (keep both in sync). Language: not offered (would need ~300 strings).
     Progress › Weight: ranges 1 wk / 1 mo / 3 mo / 1 yr / All; with "7" the table lists every
     weigh-in of the week (`daily` branch in renderWeight); tile notes shortened; the "All
     weigh-ins" chart is a folded `<details id="all-weighins">` (chart resized on open).

@@ -416,7 +416,23 @@
 
     <!-- ============ PROFILE: height, age, sex (for calorie estimates) ============ -->
     <section id="profile" class="section" hidden>
-      <!-- Your body details, used to estimate calories (synced like your logs) -->
+      <!-- Three views; data-view says which one each button shows -->
+      <div id="profile-views" class="segmented">
+        <span class="seg-indicator" aria-hidden="true"></span>
+        <button type="button" data-view="pv-profile">Profile</button>
+        <button type="button" data-view="pv-settings">Settings</button>
+        <button type="button" data-view="pv-account">Account</button>
+      </div>
+
+      <!-- PROFILE: your name and the details behind the calorie estimates -->
+      <div id="pv-profile" class="profile-view" hidden>
+        <div id="name-box" class="log-form">
+          <h2>Your name</h2>
+          <p class="hint small">How your friends see you in the Friends tab.</p>
+          <input id="member-name" maxlength="40" autocomplete="name" placeholder="Your name">
+          <button type="button" id="save-name" class="secondary">Save name</button>
+        </div>
+
       <form id="form-profile" class="log-form">
         <h2>Profile</h2>
         <p class="hint small">Used to estimate your resting burn and calories. Weight comes from your latest weigh-in.</p>
@@ -453,6 +469,33 @@
         <p class="hint small" id="profile-rmr"></p>
         <p class="hint small" id="profile-calibration" hidden></p>
       </form>
+      </div>
+
+      <!-- SETTINGS: how the app looks and behaves on this device, plus the morning notification -->
+      <div id="pv-settings" class="profile-view" hidden>
+        <div id="settings-box" class="log-form">
+          <h2>This device</h2>
+          <div class="setting">
+            <div class="setting-label">Appearance</div>
+            <div class="range-buttons" id="theme-choice">
+              <button type="button" data-theme="system">Automatic</button>
+              <button type="button" data-theme="light">Light</button>
+              <button type="button" data-theme="dark">Dark</button>
+            </div>
+          </div>
+          <div class="setting">
+            <div class="setting-label">Weight unit</div>
+            <div class="range-buttons" id="unit-choice">
+              <button type="button" data-unit="kg">kg</button>
+              <button type="button" data-unit="lb">lb</button>
+            </div>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="morning-routine-toggle">
+            Ask for wake-up time and weight each morning
+          </label>
+          <p class="hint small">When off, the "Good morning" screen stays away. You can still log a wake-up or a weigh-in from the Log tab.</p>
+        </div>
 
       <!-- The daily "Good morning" notification (app.js fills this in) -->
       <div id="notify-box" class="log-form account">
@@ -466,7 +509,10 @@
         <button type="button" id="notify-on" class="save">Turn on</button>
         <button type="button" id="notify-off" class="secondary" hidden>Turn off</button>
       </div>
+      </div>
 
+      <!-- ACCOUNT: sign in / out, password, members (admin), delete -->
+      <div id="pv-account" class="profile-view" hidden>
       <!-- ============ ACCOUNT ============ -->
       <div class="log-form account">
         <h2>Account</h2>
@@ -512,10 +558,6 @@
           <p>Signed in as <strong id="signed-in-name"></strong> <span class="hint small" id="signed-in-email"></span></p>
           <p class="hint small" id="membership-note"></p>
 
-          <label>Your name
-            <input id="member-name" maxlength="40" autocomplete="name">
-          </label>
-          <button type="button" id="save-name" class="secondary">Save name</button>
 
           <!-- "details" = a section that opens when you tap its summary line -->
           <details class="account-details">
@@ -541,6 +583,7 @@
         <p class="hint small">People who created an account. Approve someone to let them use the app;
           decline to block them (you can change your mind later).</p>
         <ul id="members-list" class="members-list"></ul>
+      </div>
       </div>
     </section>
   </main>

@@ -3089,6 +3089,7 @@ function logWake(time) {
 // Show the step that's still needed today, or nothing
 function showMorning() {
   if (!getSession() || !isApproved()) return;   // locked out: nothing to log yet
+  if (getPref("morningRoutine", "on") === "off") return;   // turned off in Settings
   const t = today();
   const needWake = !wakeEntryFor(t) && getPref("wakeSkipped", "") !== t;
   const needWeigh = !loadEntries().some(function (e) {
@@ -3498,13 +3499,78 @@ function setAuthMode(mode) {
   signUpForm.hidden = mode !== "signup";
 }
 
+// ---------- Profile tab: Profile / Settings / Account ----------
+let profileView = getPref("profileView", "pv-profile");
+document.querySelectorAll("#profile-views button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    profileView = button.dataset.view;
+    setPref("profileView", profileView);
+    showProfileView();
+  });
+});
+
+function showProfileView() {
+  const locked = !getSession() || !isApproved();
+  const view = locked ? "pv-account" : profileView;    // locked out: only the account view exists
+  document.getElementById("profile-views").hidden = locked;
+  const buttons = document.querySelectorAll("#profile-views button");
+  let chosen = null;
+  buttons.forEach(function (b) {
+    const active = b.dataset.view === view;
+    b.classList.toggle("active", active);
+    if (active) chosen = b;
+  });
+  const indicator = document.querySelector("#profile-views .seg-indicator");
+  const x = chosen.offsetLeft - buttons[0].offsetLeft;
+  const wasOff = indicator.dataset.placed !== "1";
+  indicator.dataset.placed = "1";
+  if (wasOff || locked || document.getElementById("profile").hidden) fluid.jump(fluid.valuesOf(indicator).x, x);
+  else fluid.springTo(fluid.valuesOf(indicator).x, x);
+  document.querySelectorAll(".profile-view").forEach(function (v) {
+    if (v.id === view) { if (v.hidden) fluid.show(v, { y: 8 }, { duration: 0.25 }); }
+    else v.hidden = true;
+  });
+}
+
+// ---------- Settings for this device ----------
+function applyTheme() {
+  const theme = getPref("theme", "system");
+  if (theme === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  document.querySelectorAll("#theme-choice button").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.theme === theme);
+  });
+}
+document.querySelectorAll("#theme-choice button").forEach(function (button) {
+  button.addEventListener("click", function () { setPref("theme", button.dataset.theme); applyTheme(); });
+});
+
+function renderSettings() {
+  applyTheme();
+  const unit = getPref("weightUnit", "kg");
+  document.querySelectorAll("#unit-choice button").forEach(function (b) { b.classList.toggle("active", b.dataset.unit === unit); });
+  document.getElementById("morning-routine-toggle").checked = getPref("morningRoutine", "on") !== "off";
+}
+document.querySelectorAll("#unit-choice button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    setPref("weightUnit", button.dataset.unit);
+    renderSettings();
+    showToast("Weights in " + button.dataset.unit + " from now on");
+  });
+});
+document.getElementById("morning-routine-toggle").addEventListener("change", function () {
+  setPref("morningRoutine", this.checked ? "on" : "off");
+  if (this.checked) showMorning();
+  else fluid.hide(document.getElementById("morning"), { scale: 0.96, blur: 8 });
+});
+applyTheme();
+
 // Without an approved account the app is locked: no tabs, just the Account box
 function applyAccess() {
   const locked = !getSession() || !isApproved();
   document.body.classList.toggle("locked", locked);
   document.querySelector("nav").hidden = locked;
-  profileForm.hidden = locked;
-  document.getElementById("notify-box").hidden = locked;
+  showProfileView();
   if (locked) {
     sections.forEach(function (s) { s.hidden = s.id !== "profile"; });
   } else {
@@ -3519,6 +3585,7 @@ function renderAccount() {
   const session = getSession();
   const m = getMembership();
   applyAccess();
+  renderSettings();
   document.getElementById("signed-out").hidden = !!session;
   document.getElementById("signed-in").hidden = !session;
   document.getElementById("members-box").hidden = !session || !isAdmin();
