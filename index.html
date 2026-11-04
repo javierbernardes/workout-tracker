@@ -551,13 +551,16 @@
       <div id="pick-subgroup" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
         <h2 id="pick-subgroup-title">Arms</h2>
+        <input type="search" id="subgroup-search" class="search-box" placeholder="Search arm exercises" autocomplete="off" autocorrect="off" autocapitalize="off">
         <div class="type-grid squares" id="subgroup-grid"></div>
+        <div class="type-grid squares" id="subgroup-results" hidden></div>
       </div>
 
       <!-- ---------- The exercises of that group (squares, filled in by app.js) ---------- -->
       <div id="pick-exercise" class="log-form sheet-step" hidden>
         <button type="button" class="back" aria-label="Back">‹</button>
         <h2 id="pick-exercise-title">Exercises</h2>
+        <input type="search" id="exercise-filter" class="search-box" placeholder="Search in this group" autocomplete="off" autocorrect="off" autocapitalize="off">
         <div class="type-grid squares" id="exercise-grid"></div>
       </div>
 

@@ -693,6 +693,8 @@ function showStep(stepId, direction) {
   steps.forEach(function (s) { if (s !== step) s.hidden = true; });
   if (step.tagName === "FORM") resetForm(step);
   if (stepId === "pick-group") renderGroupSquares();
+  if (stepId === "pick-subgroup" && currentSubgroupParent) renderSubgroupSquares(currentSubgroupParent);
+  if (stepId === "pick-exercise" && currentExerciseGroup && direction < 0) renderExerciseSquares(currentExerciseGroup.group, currentExerciseGroup.colour);
   currentStep = stepId;
   if (stepMode === "page") window.scrollTo(0, 0);
   else container.scrollTop = 0;
@@ -888,9 +890,16 @@ function renderGroupSquares() {
 }
 
 // Arms is split in three; each part lists its own exercises (same colour as Arms)
+let currentSubgroupParent = null;
 function renderSubgroupSquares(group) {
+  currentSubgroupParent = group;
   document.getElementById("pick-subgroup-title").textContent = group.name;
+  const search = document.getElementById("subgroup-search");
+  search.value = "";
+  search.placeholder = "Search " + group.name.toLowerCase() + " exercises";
+  document.getElementById("subgroup-results").hidden = true;
   const grid = document.getElementById("subgroup-grid");
+  grid.hidden = false;
   grid.innerHTML = "";
   group.subgroups.forEach(function (sub) {
     grid.appendChild(makeSquare(sub.icon, sub.name, function () {
@@ -900,7 +909,40 @@ function renderSubgroupSquares(group) {
   });
 }
 
-function renderExerciseSquares(group, colourName) {
+// Searching inside Arms: matches from Biceps, Triceps and Shoulders together
+document.getElementById("subgroup-search").addEventListener("input", function () {
+  const group = currentSubgroupParent;
+  if (!group) return;
+  const words = this.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const grid = document.getElementById("subgroup-grid");
+  const results = document.getElementById("subgroup-results");
+  if (!words.length) { grid.hidden = false; results.hidden = true; return; }
+  results.innerHTML = "";
+  group.subgroups.forEach(function (sub) {
+    sub.exercises.forEach(function (name) {
+      if (nameMatches(name, words)) results.appendChild(makeSquare(sub.icon, name, function () { startExercise(name); }, group.name));
+    });
+  });
+  const typed = this.value.trim();
+  results.appendChild(makeSquare("pencil", 'Add "' + typed + '"', function () { startExercise(typed); }));
+  grid.hidden = true;
+  results.hidden = false;
+});
+
+// Searching inside one group's list: the squares narrow down as you type
+let currentExerciseGroup = null;
+document.getElementById("exercise-filter").addEventListener("input", function () {
+  if (currentExerciseGroup) renderExerciseSquares(currentExerciseGroup.group, currentExerciseGroup.colour, this.value);
+});
+
+function renderExerciseSquares(group, colourName, filterText) {
+  if (filterText === undefined) {
+    // A fresh visit to this group: clear the search box
+    currentExerciseGroup = { group: group, colour: colourName };
+    document.getElementById("exercise-filter").value = "";
+    document.getElementById("exercise-filter").placeholder = "Search " + group.name.toLowerCase() + " exercises";
+  }
+  const words = (filterText || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
   document.getElementById("pick-exercise-title").textContent = group.name;
   const grid = document.getElementById("exercise-grid");
   grid.innerHTML = "";
@@ -913,9 +955,11 @@ function renderExerciseSquares(group, colourName) {
     });
   }
   names.forEach(function (name) {
+    if (words.length && !nameMatches(name, words)) return;
     grid.appendChild(makeSquare(group.icon, name, function () { startExercise(name); }, colourName || group.name));
   });
-  grid.appendChild(makeSquare("pencil", "Something else…", function () { startExercise(""); }));
+  const typed = (filterText || "").trim();
+  grid.appendChild(makeSquare("pencil", typed ? 'Add "' + typed + '"' : "Something else…", function () { startExercise(typed); }));
 }
 
 // A square button: a line icon on a soft colour wash (one colour per muscle group), name under it
