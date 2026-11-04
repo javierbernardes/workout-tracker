@@ -1075,8 +1075,28 @@ function saveEdit(changes, message) {
   const kept = { id: editing.id, user: editing.user, createdAt: editing.createdAt };
   if (editing.workoutId) kept.workoutId = editing.workoutId;
   recordChange({ op: "add", entry: Object.assign({ type: editing.type }, changes, kept) });
+  stampKcal(editing.workoutId || editing.id);
   showToast(message || "Changes saved ✓");
   stopEditing(true);
+}
+
+// Write the estimated calories into a workout or sport entry ("kcal"), so the
+// Friends challenges can count them on the server. Done after every save, and
+// once per device for older entries that don't have it yet.
+function stampKcal(id) {
+  const e = loadEntries().find(function (x) { return x.id === id; });
+  if (!e || (e.type !== "workout" && e.type !== "sports")) return;
+  const kg = weightKgOn(e.date);
+  const kcal = kg ? Math.round(entryKcal(e, kg)) : 0;
+  if (e.kcal !== kcal) updateEntry(e.id, { kcal: kcal });
+}
+
+function stampAllKcal() {
+  if (getPref("kcalStamped", "") === "2") return;
+  loadEntries().forEach(function (e) {
+    if ((e.type === "workout" || e.type === "sports") && e.kcal === undefined) stampKcal(e.id);
+  });
+  setPref("kcalStamped", "2");
 }
 
 // Put an entry's values into its form
@@ -1305,6 +1325,7 @@ document.getElementById("form-finish").addEventListener("submit", function (even
     notes: f.notes.value.trim()
   });
   setActiveWorkout(null);
+  stampKcal(workout.id);
   closeForms();
   showWorkoutSummary(workout.id);
 });
@@ -1677,6 +1698,7 @@ sportsForm.addEventListener("submit", function (event) {
 
   if (editing) { saveEdit(entry); return; }
   addEntry(entry);
+  stampKcal(entry.id);
   showToast("Saved " + entry.sport + " ✓");
   closeForms();
 });
@@ -3668,9 +3690,8 @@ document.getElementById("delete-account").addEventListener("click", function () 
 // =====================================================
 
 const METRIC_NAMES = {
-  workouts: "Most workouts", active_days: "Most active days", exercise_minutes: "Most minutes of exercise",
-  sports: "Most sports sessions", streak: "Longest streak of active days",
-  early_wakeups: "Most wake-ups before 7:30", weigh_in_days: "Most morning weigh-ins"
+  workouts: "Most workouts", active_days: "Most active days", calories: "Most calories burned",
+  sports: "Most sports sessions", streak: "Longest streak of active days"
 };
 
 function ordinal(n) {
@@ -3806,18 +3827,23 @@ function drawFriends(data) {
     cards.appendChild(card);
   });
 
-  // Season table
-  const season = document.getElementById("season-list");
-  season.innerHTML = "";
-  (data.season || []).forEach(function (row, i) {
-    const li = rankRow(i + 1, row.name, row.user_id === me, row.points + (row.points === 1 ? " pt" : " pts"));
+  // Friends: everyone who's in, by name (trophies for challenge wins)
+  const people = document.getElementById("season-list");
+  people.innerHTML = "";
+  (data.season || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (row) {
+    const li = document.createElement("li");
+    li.className = "rank-row" + (row.user_id === me ? " me" : "");
+    const who = document.createElement("span");
+    who.className = "who";
+    who.append(icon("user"), " " + (row.user_id === me ? row.name + " (you)" : row.name));
+    li.appendChild(who);
     if (row.wins > 0) {
       const t = document.createElement("span");
       t.className = "trophies";
       t.append(icon("trophy"), " " + row.wins);
-      li.insertBefore(t, li.querySelector(".score"));
+      li.appendChild(t);
     }
-    season.appendChild(li);
+    people.appendChild(li);
   });
 
   // Hall of fame
@@ -4023,6 +4049,7 @@ async function start() {
   renderNotify();
   if (!getSession() && loadEntries().length === 0 && getPref("welcomed", "") !== "1") showWelcome();
   else showMorning();
+  if (isApproved()) stampAllKcal();
   sync();
 }
 start();

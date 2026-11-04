@@ -247,7 +247,11 @@ Just for the user for now, but designed so others can use it later (every entry 
     `boardPeriod`): "This week" = the challenge card; "This month" = `month_points()` =
     weekly-challenge points closed in the month + `activity_points()` (5 per workout, 5 per
     sport, 1 per morning weigh-in day, 1 per wake-up). season_table() adds activity points
-    for the quarter too. The admin card only offers "This week's".
+    for the quarter too. The admin card only offers "This week's". Later that evening:
+    rotation = workouts / active_days / calories / sports / streak (minutes, wake-ups and
+    weigh-ins removed); metric `calories` sums `data.kcal`, which the app now writes into every
+    workout and sports entry (`stampKcal` after finish/save/edit; `stampAllKcal` once per device,
+    pref `kcalStamped`). Friends view = names only (+ trophies), alphabetical.
     Progress › Weight: ranges 1 wk / 1 mo / 3 mo / 1 yr / All; with "7" the table lists every
     weigh-in of the week (`daily` branch in renderWeight); tile notes shortened; the "All
     weigh-ins" chart is a folded `<details id="all-weighins">` (chart resized on open).

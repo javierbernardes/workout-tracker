@@ -390,22 +390,19 @@
             <select id="admin-metric">
               <option value="workouts">Most workouts</option>
               <option value="active_days">Most active days</option>
-              <option value="exercise_minutes">Most minutes of exercise</option>
+              <option value="calories">Most calories burned</option>
               <option value="sports">Most sports sessions</option>
               <option value="streak">Longest streak of active days</option>
-              <option value="early_wakeups">Most wake-ups before 7:30</option>
-              <option value="weigh_in_days">Most morning weigh-ins</option>
             </select>
           </label>
           <button type="button" id="admin-set" class="secondary">Set challenge</button>
         </div>
       </div>
 
-      <!-- FRIENDS: everyone, with this season's points and trophies -->
+      <!-- FRIENDS: everyone who's in -->
       <div id="fv-friends" class="friends-view" hidden>
-        <h2>Season table</h2>
-        <p class="hint small">Points this quarter: weekly challenges by rank (1st of N scorers gets N) plus daily
-          activity (5 per workout or sport, 1 per morning weigh-in or wake-up). Trophies are challenge wins.</p>
+        <h2>Everyone</h2>
+        <p class="hint small">The people in the group. A trophy means a weekly challenge won.</p>
         <ul id="season-list" class="rank-list card-list"></ul>
       </div>
 
