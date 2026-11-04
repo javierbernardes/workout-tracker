@@ -189,7 +189,7 @@ Just for the user for now, but designed so others can use it later (every entry 
      "Log another weigh-in" button sits at the top of Progress › Weight (`updateWeightButtons`).
    - Testing here: `python3 -m http.server 8080` + Playwright (Chromium is preinstalled in the
      cloud session); Chart.js can't load there (CDN blocked), charts are untested in that setup.
-     The user tests on iPhone. `sw.js` CACHE is "workout-tracker-v2"; bump it if the file list changes.
+     The user tests on iPhone. `sw.js` CACHE is "workout-tracker-v4"; bump it to force every phone to fetch fresh files.
 
 9. ✅ Friends can join (2026-10-22). Open sign-up with approval by Javier:
    - Supabase (`supabase-members.sql`): table `members` (user_id, email, name, status
