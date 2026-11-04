@@ -239,7 +239,9 @@ Just for the user for now, but designed so others can use it later (every entry 
     `overtaken` (dropped out of top 3, max once/day). App: 5th tab Friends (`renderFriends`,
     cached in localStorage `friends-cache`), cards for week + month with your position and the
     ranking (podium colours, your row pinned, Show all), season table with trophies, hall of
-    fame, admin "Change a challenge" card. Parked: team / head-to-head weeks.
+    fame, admin "Change a challenge" card. The tab has three views (segmented control like
+    Progress, pref `friendsView`): Leaderboard (cards + admin), Friends (season table), Hall of
+    fame. Every exercise-picking screen has a search box. Parked: team / head-to-head weeks.
 
 10. 🟡 Daily-use tweaks (2026-11-04): Arms → Biceps / Triceps / Shoulders (`subgroups` in
     `EXERCISE_GROUPS`, step `pick-subgroup`, same orange wash); "Log it / Change" button in

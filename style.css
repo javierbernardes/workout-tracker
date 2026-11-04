@@ -1462,4 +1462,20 @@ body.sheet-open { overflow: hidden; }
 .fame-row .fame-title { font-weight: 600; }
 .fame-row .icon-wrap { color: #b8860b; }
 
-#challenge-admin { margin-top: var(--sp-6); }
+#challenge-admin {
+  margin-top: var(--sp-6);
+  padding: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+#challenge-admin h2 { margin-top: 0; }
+
+/* Friends: the lists sit in a card */
+.card-list {
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+#fv-friends h2, #fv-fame h2 { margin-top: var(--sp-1); }

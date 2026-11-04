@@ -348,43 +348,57 @@
 
     <!-- ============ FRIENDS: this week's and month's challenges, rankings, hall of fame ============ -->
     <section id="friends" class="section" hidden>
-      <h2>Friends</h2>
+      <!-- Three views; data-view says which one each button shows -->
+      <div id="friends-views" class="segmented">
+        <span class="seg-indicator" aria-hidden="true"></span>
+        <button type="button" data-view="fv-board">Leaderboard</button>
+        <button type="button" data-view="fv-friends">Friends</button>
+        <button type="button" data-view="fv-fame">Hall of fame</button>
+      </div>
       <p class="hint small" id="friends-status"></p>
 
-      <!-- The two running challenges (filled in by app.js) -->
-      <div id="challenge-cards"></div>
+      <!-- LEADERBOARD: the two running challenges -->
+      <div id="fv-board" class="friends-view" hidden>
+        <div id="challenge-cards"></div>
 
-      <h3>Season table <span class="hint small">points this quarter</span></h3>
-      <p class="hint small">Every challenge gives points by rank: 1st of N scorers gets N, the last scorer gets 1.
-        Monthly challenges count double.</p>
-      <ul id="season-list" class="rank-list"></ul>
+        <!-- Only the admin sees this -->
+        <div id="challenge-admin" class="log-form account" hidden>
+          <h2>Change a challenge</h2>
+          <p class="hint small">Challenges rotate on their own; use this to replace the current one.</p>
+          <label>Which one
+            <select id="admin-period">
+              <option value="week">This week's</option>
+              <option value="month">This month's</option>
+            </select>
+          </label>
+          <label>What to count
+            <select id="admin-metric">
+              <option value="workouts">Most workouts</option>
+              <option value="active_days">Most active days</option>
+              <option value="exercise_minutes">Most minutes of exercise</option>
+              <option value="sports">Most sports sessions</option>
+              <option value="streak">Longest streak of active days</option>
+              <option value="early_wakeups">Most wake-ups before 7:30</option>
+              <option value="weigh_in_days">Most morning weigh-ins</option>
+            </select>
+          </label>
+          <button type="button" id="admin-set" class="secondary">Set challenge</button>
+        </div>
+      </div>
 
-      <h3>Hall of fame</h3>
-      <ul id="fame-list" class="fame-list"></ul>
-      <p class="hint small" id="fame-empty" hidden>No finished challenges yet. The first week closes on Sunday night.</p>
+      <!-- FRIENDS: everyone, with this season's points and trophies -->
+      <div id="fv-friends" class="friends-view" hidden>
+        <h2>Season table</h2>
+        <p class="hint small">Points this quarter. Every challenge gives points by rank: 1st of N scorers gets N,
+          the last scorer gets 1; monthly challenges count double. Trophies are wins.</p>
+        <ul id="season-list" class="rank-list card-list"></ul>
+      </div>
 
-      <!-- Only the admin sees this -->
-      <div id="challenge-admin" class="log-form account" hidden>
-        <h2>Change a challenge</h2>
-        <p class="hint small">Challenges rotate on their own; use this to replace the current one.</p>
-        <label>Which one
-          <select id="admin-period">
-            <option value="week">This week's</option>
-            <option value="month">This month's</option>
-          </select>
-        </label>
-        <label>What to count
-          <select id="admin-metric">
-            <option value="workouts">Most workouts</option>
-            <option value="active_days">Most active days</option>
-            <option value="exercise_minutes">Most minutes of exercise</option>
-            <option value="sports">Most sports sessions</option>
-            <option value="streak">Longest streak of active days</option>
-            <option value="early_wakeups">Most wake-ups before 7:30</option>
-            <option value="weigh_in_days">Most morning weigh-ins</option>
-          </select>
-        </label>
-        <button type="button" id="admin-set" class="secondary">Set challenge</button>
+      <!-- HALL OF FAME: finished challenges and their winners -->
+      <div id="fv-fame" class="friends-view" hidden>
+        <h2>Hall of fame</h2>
+        <ul id="fame-list" class="fame-list card-list"></ul>
+        <p class="hint small" id="fame-empty" hidden>No finished challenges yet. The first week closes on Sunday night.</p>
       </div>
     </section>
 

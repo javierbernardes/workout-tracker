@@ -3632,10 +3632,43 @@ function ordinal(n) {
 
 function scoreText(score, unit) {
   const n = Number(score);
-  return (Number.isInteger(n) ? n : round1(n)).toLocaleString("en-US") + (unit ? " " + unit : "");
+  // "1 workout", "2 workouts" (units ending in s lose it for exactly 1)
+  const u = unit && n === 1 && /s$/.test(unit) && unit !== "days in a row" ? unit.slice(0, -1) : unit;
+  return (Number.isInteger(n) ? n : round1(n)).toLocaleString("en-US") + (u ? " " + u : "");
+}
+
+// Which of the three views is open (remembered per device)
+let friendsView = getPref("friendsView", "fv-board");
+document.querySelectorAll("#friends-views button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    friendsView = button.dataset.view;
+    setPref("friendsView", friendsView);
+    showFriendsView();
+  });
+});
+
+function showFriendsView() {
+  const buttons = document.querySelectorAll("#friends-views button");
+  let chosen = null;
+  buttons.forEach(function (b) {
+    const active = b.dataset.view === friendsView;
+    b.classList.toggle("active", active);
+    if (active) chosen = b;
+  });
+  const indicator = document.querySelector("#friends-views .seg-indicator");
+  const x = chosen.offsetLeft - buttons[0].offsetLeft;
+  const wasOff = indicator.dataset.placed !== "1";
+  indicator.dataset.placed = "1";
+  if (wasOff || document.getElementById("friends").hidden) fluid.jump(fluid.valuesOf(indicator).x, x);
+  else fluid.springTo(fluid.valuesOf(indicator).x, x);
+  document.querySelectorAll(".friends-view").forEach(function (v) {
+    if (v.id === friendsView) { if (v.hidden) fluid.show(v, { y: 8 }, { duration: 0.25 }); }
+    else v.hidden = true;
+  });
 }
 
 async function renderFriends() {
+  showFriendsView();
   const status = document.getElementById("friends-status");
   if (!isApproved()) { status.textContent = "Available once you're approved."; return; }
   let cached = null;
