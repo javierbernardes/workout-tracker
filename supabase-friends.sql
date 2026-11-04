@@ -305,3 +305,55 @@ revoke execute on function public.notify_challenge_started() from public, anon, 
 alter function public.metric_title(text) set search_path = public;
 alter function public.metric_unit(text) set search_path = public;
 alter function public.app_today() set search_path = public;
+
+-- =====================================================
+--  Changed 2026-11-04 (evening): no monthly challenges. "This month" is a running points
+--  total = weekly challenge points + daily activity points. Applied with CREATE OR REPLACE.
+-- =====================================================
+
+-- Points for daily activity: 2 per workout, 2 per sports session, 1 per morning weigh-in day, 1 per logged wake-up
+create or replace function public.activity_points(p_user uuid, p_start date, p_end date)
+returns int language sql stable security definer set search_path = public as $$
+  with s as (select to_char(p_start, 'YYYY-MM-DD') as a, to_char(p_end, 'YYYY-MM-DD') as b)
+  select (
+    2 * (select count(*) from entries, s where user_id = p_user and type = 'workout' and date between s.a and s.b) +
+    2 * (select count(*) from entries, s where user_id = p_user and type = 'sports' and date between s.a and s.b) +
+    1 * (select count(distinct date) from entries, s where user_id = p_user and type = 'bodyweight'
+         and coalesce((data->>'morning')::boolean, true) and date between s.a and s.b) +
+    1 * (select count(*) from entries, s where user_id = p_user and type = 'wake' and date between s.a and s.b)
+  )::int;
+$$;
+revoke execute on function public.activity_points(uuid, date, date) from public, anon, authenticated;
+
+-- This month's running total for everyone: challenge points + activity points
+create or replace function public.month_points()
+returns jsonb language sql stable security definer set search_path = public as $$
+  with bounds as (
+    select date_trunc('month', app_today())::date as ms,
+           (date_trunc('month', app_today()) + interval '1 month' - interval '1 day')::date as me
+  ),
+  rows_ as (
+    select m.user_id, m.name,
+      coalesce((select sum(r.points) from challenge_results r join challenges c on c.id = r.challenge_id
+                where r.user_id = m.user_id and c.period = 'week' and c.ends_on between b.ms and b.me), 0)::int as challenge_points,
+      activity_points(m.user_id, b.ms, b.me) as activity_points
+    from members m, bounds b where m.status = 'approved'
+  ),
+  ranked as (
+    select *, challenge_points + activity_points as points,
+           rank() over (order by challenge_points + activity_points desc)::int as rank
+    from rows_
+  )
+  select case when is_approved() then jsonb_build_object(
+    'me', auth.uid(),
+    'month_start', (select ms from bounds), 'month_end', (select me from bounds),
+    'rows', coalesce((select jsonb_agg(jsonb_build_object('user_id', user_id, 'name', name, 'points', points,
+              'challenge_points', challenge_points, 'activity_points', activity_points, 'rank', rank)
+              order by rank, name) from ranked), '[]'::jsonb)
+  ) else '{}'::jsonb end;
+$$;
+revoke execute on function public.month_points() from public, anon;
+grant execute on function public.month_points() to authenticated;
+
+-- ensure_current_challenges() now creates only the weekly challenge (same rotation);
+-- season_table() adds activity points for the quarter. The open monthly challenge was deleted.

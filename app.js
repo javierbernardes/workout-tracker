@@ -3727,9 +3727,10 @@ async function renderFriends() {
     const results = await Promise.all([
       database("rpc/friends_overview", { method: "POST", body: "{}" }),
       database("rpc/season_table", { method: "POST", body: "{}" }),
-      database("rpc/hall_of_fame", { method: "POST", body: "{}" })
+      database("rpc/hall_of_fame", { method: "POST", body: "{}" }),
+      database("rpc/month_points", { method: "POST", body: "{}" })
     ]);
-    const data = { overview: results[0], season: results[1], fame: results[2], at: Date.now() };
+    const data = { overview: results[0], season: results[1], fame: results[2], month: results[3], at: Date.now() };
     localStorage.setItem("friends-cache", JSON.stringify(data));
     drawFriends(data);
     status.textContent = "";
@@ -3739,14 +3740,48 @@ async function renderFriends() {
   }
 }
 
+// This week / This month inside the leaderboard
+let boardPeriod = getPref("boardPeriod", "week");
+document.querySelectorAll("#board-period button").forEach(function (button) {
+  button.addEventListener("click", function () {
+    boardPeriod = button.dataset.period;
+    setPref("boardPeriod", boardPeriod);
+    showBoardPeriod();
+  });
+});
+function showBoardPeriod() {
+  document.querySelectorAll("#board-period button").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.period === boardPeriod);
+  });
+  document.getElementById("challenge-cards").hidden = boardPeriod !== "week";
+  document.getElementById("month-board").hidden = boardPeriod !== "month";
+}
+
 function drawFriends(data) {
   const me = data.overview.me;
   const today = data.overview.today;
+  showBoardPeriod();
 
-  // The two running challenges
+  // This month: running points
+  const month = data.month || {};
+  const monthRows = month.rows || [];
+  const mine = monthRows.find(function (r) { return r.user_id === me; });
+  const daysLeftMonth = month.month_end ? Math.round((new Date(month.month_end + "T00:00") - new Date(today + "T00:00")) / 86400000) : 0;
+  document.getElementById("month-when").textContent = "This month · " + (daysLeftMonth <= 0 ? "last day" : daysLeftMonth + " days left");
+  document.getElementById("month-you").textContent = mine
+    ? (mine.points > 0 ? "You're " + ordinal(mine.rank) + " · " + mine.points + " pts (" + mine.challenge_points + " from challenges, " +
+        mine.activity_points + " from activity)" : "No points yet · log something to get on the board")
+    : "";
+  const monthList = document.getElementById("month-list");
+  monthList.innerHTML = "";
+  monthRows.forEach(function (r) {
+    monthList.appendChild(rankRow(r.rank, r.name, r.user_id === me, r.points + (r.points === 1 ? " pt" : " pts")));
+  });
+
+  // This week's challenge
   const cards = document.getElementById("challenge-cards");
   cards.innerHTML = "";
-  (data.overview.challenges || []).forEach(function (c) {
+  (data.overview.challenges || []).filter(function (c) { return c.period === "week"; }).forEach(function (c) {
     const card = document.createElement("div");
     card.className = "challenge-card " + c.period;
     const when = document.createElement("div");

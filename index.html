@@ -359,9 +359,23 @@
       </div>
       <p class="hint small" id="friends-status"></p>
 
-      <!-- LEADERBOARD: the two running challenges -->
+      <!-- LEADERBOARD: this week's challenge, or this month's running points -->
       <div id="fv-board" class="friends-view" hidden>
+        <div class="range-buttons" id="board-period">
+          <button type="button" data-period="week" class="active">This week</button>
+          <button type="button" data-period="month">This month</button>
+        </div>
         <div id="challenge-cards"></div>
+        <div id="month-board" hidden>
+          <div class="challenge-card month">
+            <div class="challenge-when" id="month-when">This month</div>
+            <div class="challenge-title">Points so far</div>
+            <div class="challenge-you" id="month-you"></div>
+            <ul id="month-list" class="rank-list"></ul>
+          </div>
+          <p class="hint small">Points add up all month: your rank in each weekly challenge (1st of N scorers = N points),
+            plus 2 for every workout, 2 for every sports session, 1 for each morning weigh-in and 1 for each logged wake-up.</p>
+        </div>
 
         <!-- Only the admin sees this -->
         <div id="challenge-admin" class="log-form account" hidden>
@@ -370,7 +384,6 @@
           <label>Which one
             <select id="admin-period">
               <option value="week">This week's</option>
-              <option value="month">This month's</option>
             </select>
           </label>
           <label>What to count
@@ -391,8 +404,8 @@
       <!-- FRIENDS: everyone, with this season's points and trophies -->
       <div id="fv-friends" class="friends-view" hidden>
         <h2>Season table</h2>
-        <p class="hint small">Points this quarter. Every challenge gives points by rank: 1st of N scorers gets N,
-          the last scorer gets 1; monthly challenges count double. Trophies are wins.</p>
+        <p class="hint small">Points this quarter: weekly challenges by rank (1st of N scorers gets N) plus daily
+          activity (2 per workout or sport, 1 per morning weigh-in or wake-up). Trophies are challenge wins.</p>
         <ul id="season-list" class="rank-list card-list"></ul>
       </div>
 

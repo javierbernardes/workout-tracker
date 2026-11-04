@@ -242,6 +242,12 @@ Just for the user for now, but designed so others can use it later (every entry 
     fame, admin "Change a challenge" card. The tab has three views (segmented control like
     Progress, pref `friendsView`): Leaderboard (cards + admin), Friends (season table), Hall of
     fame. Every exercise-picking screen has a search box. Parked: team / head-to-head weeks.
+    2026-11-04 evening: NO monthly challenges any more (ensure_current_challenges creates only
+    weekly; the open November monthly row was deleted). Leaderboard view has two chips (pref
+    `boardPeriod`): "This week" = the challenge card; "This month" = `month_points()` =
+    weekly-challenge points closed in the month + `activity_points()` (2 per workout, 2 per
+    sport, 1 per morning weigh-in day, 1 per wake-up). season_table() adds activity points
+    for the quarter too. The admin card only offers "This week's".
     Progress › Weight: ranges 1 wk / 1 mo / 3 mo / 1 yr / All; with "7" the table lists every
     weigh-in of the week (`daily` branch in renderWeight); tile notes shortened; the "All
     weigh-ins" chart is a folded `<details id="all-weighins">` (chart resized on open).
