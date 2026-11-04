@@ -2301,14 +2301,92 @@ function renderStrength() {
   document.getElementById("strength-content").hidden = keys.length === 0;
   if (keys.length === 0) return;
 
-  // Most recently done first; the search box narrows the list
+  renderStrengthOverview(groups, unit);
+
+  // Grouped by muscle, most recently done first inside each group; the search box narrows the list
   const words = document.getElementById("strength-search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   keys.sort(function (a, b) { return groups[b].last.date.localeCompare(groups[a].last.date); });
+  const order = EXERCISE_GROUPS.map(function (g) { return g.name; }).concat([""]);
   const list = document.getElementById("strength-list");
   list.innerHTML = "";
-  keys.forEach(function (key) {
-    const g = groups[key];
-    if (words.length && !nameMatches(g.name, words)) return;
+  order.forEach(function (groupName) {
+    const inGroup = keys.filter(function (key) {
+      return groups[key].group === groupName && (!words.length || nameMatches(groups[key].name, words));
+    });
+    if (!inGroup.length) return;
+    const divider = document.createElement("li");
+    divider.className = "exercise-divider";
+    divider.textContent = groupName || "Your own";
+    list.appendChild(divider);
+    inGroup.forEach(function (key) { list.appendChild(strengthRow(groups[key], unit)); });
+  });
+}
+
+// The two numbers above the list and the bar chart of weight lifted per week
+let volumeChart;
+function renderStrengthOverview(groups, unit) {
+  const t = today();
+  const monday = weekStart(t);
+  const allLogs = Object.keys(groups).reduce(function (all, k) { return all.concat(groups[k].logs); }, []);
+  function volumeOf(e) {
+    return e.sets.reduce(function (sum, s) { return sum + s.reps * inUnit(s.weight, e.unit, unit); }, 0);
+  }
+
+  // This week: kg and sessions (distinct workouts)
+  const thisWeek = allLogs.filter(function (e) { return e.date >= monday && e.date <= t; });
+  const weekKg = Math.round(thisWeek.reduce(function (sum, e) { return sum + volumeOf(e); }, 0));
+  const weekSessions = new Set(thisWeek.map(function (e) { return e.workoutId || e.date; })).size;
+
+  // Personal bests in the last 30 days: exercises whose best session is recent (and not the first)
+  const since = shiftDate(t, -30);
+  const prs = Object.keys(groups).filter(function (k) {
+    const g = groups[k];
+    return g.sessions.length > 1 && g.best.date >= since;
+  }).length;
+
+  const row = document.getElementById("strength-overview");
+  row.innerHTML = "";
+  row.appendChild(statTile("This week", weekKg.toLocaleString("en-US") + " " + unit,
+    weekSessions + (weekSessions === 1 ? " session" : " sessions") + " since Monday"));
+  row.appendChild(statTile("Personal bests", String(prs), "new best estimated max, last 30 days"));
+
+  // Weight lifted per week, last 8 weeks
+  const weeks = [];
+  for (let i = 7; i >= 0; i--) weeks.push(shiftDate(monday, -7 * i));
+  const perWeek = weeks.map(function (w) {
+    const end = shiftDate(w, 6);
+    return Math.round(allLogs.filter(function (e) { return e.date >= w && e.date <= end; })
+      .reduce(function (sum, e) { return sum + volumeOf(e); }, 0));
+  });
+  const box = document.getElementById("chart-volume");
+  if (volumeChart) volumeChart.destroy();
+  box.closest(".chart-card").hidden = typeof Chart === "undefined";
+  if (typeof Chart === "undefined") return;
+  const colors = chartColors();
+  volumeChart = new Chart(box, {
+    type: "bar",
+    data: {
+      labels: weeks.map(function (w) { return new Date(w + "T00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); }),
+      datasets: [{ data: perWeek,
+        backgroundColor: weeks.map(function (w) { return w === monday ? colors.accent + "80" : colors.accent; }),
+        borderRadius: 4, maxBarThickness: 28 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function (item) { return item.raw.toLocaleString("en-US") + " " + unit; } } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: colors.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 4 } },
+        y: { grid: { color: colors.border }, ticks: { color: colors.muted, maxTicksLimit: 4,
+             callback: function (v) { return v >= 1000 ? Math.round(v / 1000) + "k" : v; } } }
+      }
+    }
+  });
+}
+
+// One row in the exercise list
+function strengthRow(g, unit) {
+  {
     const li = document.createElement("li");
     li.className = "exercise-row tappable";
     const left = document.createElement("div");
@@ -2330,10 +2408,17 @@ function renderStrength() {
     bestLabel.className = "hint small";
     bestLabel.textContent = g.repsOnly ? "most reps" : "best est. max";
     right.append(bestValue, bestLabel);
+    // A new best in the latest session gets a small PR mark
+    if (g.sessions.length > 1 && g.best.date === g.last.date) {
+      const pr = document.createElement("span");
+      pr.className = "pr-badge";
+      pr.textContent = "PR";
+      title.appendChild(pr);
+    }
     li.append(left, right, icon("chevronRight"));
-    li.addEventListener("click", function () { openStrengthDetail(key); });
-    list.appendChild(li);
-  });
+    li.addEventListener("click", function () { openStrengthDetail(g.key); });
+    return li;
+  }
 }
 
 document.getElementById("strength-search").addEventListener("input", renderStrength);

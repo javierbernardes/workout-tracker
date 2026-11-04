@@ -257,6 +257,15 @@
           <h2>Strength</h2>
           <p id="strength-empty" class="hint" hidden>No weights logged yet. They'll show up here after your first workout.</p>
           <div id="strength-content">
+            <!-- The overview: weight lifted per week, and two numbers -->
+            <div class="chart-card main">
+              <div class="chart-title">Weight lifted per week</div>
+              <p class="hint small">Reps × weight of every set, summed. Last 8 weeks.</p>
+              <div class="chart-box short"><canvas id="chart-volume"></canvas></div>
+            </div>
+            <div class="stat-row" id="strength-overview"></div>
+
+            <h3>Your exercises</h3>
             <input type="search" id="strength-search" class="search-box" placeholder="Search your exercises" autocomplete="off" autocorrect="off" autocapitalize="off">
             <ul id="strength-list" class="exercise-list"></ul>
           </div>

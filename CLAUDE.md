@@ -233,7 +233,10 @@ Just for the user for now, but designed so others can use it later (every entry 
     spellings in the DB were renamed via SQL (Tbar row→T-bar row, Face pulls→Face pull,
     Pull ups→Pull-up, Seated Shoulder press→Seated shoulder press). Strength view = list of every
     exercise (`strengthGroups()`, search, best + last + sessions) → `#strength-detail` page
-    (stats, chart, every session with sets/volume/est. max). Only `.sheet-step .back` buttons
+    (stats, chart, every session with sets/volume/est. max). The Strength home opens with an
+    overview: bar chart of kg lifted per week (8 weeks, `renderStrengthOverview`, `#chart-volume`),
+    tiles (this week kg + sessions; personal bests in 30 days), then the list divided by muscle
+    group (`.exercise-divider`) with a PR badge when the last session is the best. Only `.sheet-step .back` buttons
     go "back a step"; other ‹ buttons have their own handlers.
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).

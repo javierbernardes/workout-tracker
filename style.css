@@ -1387,3 +1387,26 @@ body.sheet-open { overflow: hidden; }
 .exercise-best strong { font-size: var(--fs-lg); letter-spacing: var(--ls-lg); font-variant-numeric: tabular-nums; }
 .exercise-row .icon-wrap { color: var(--muted); flex: 0 0 auto; }
 .sessions li div:not(.hint) { color: var(--text); margin-top: 2px; }
+
+/* Dividers between muscle groups in the Strength list, and the PR mark */
+.exercise-divider {
+  margin: var(--sp-4) 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.exercise-divider:first-child { margin-top: var(--sp-3); }
+.pr-badge {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  vertical-align: 0.1em;
+}
