@@ -9,6 +9,9 @@
 //  GET                    -> the public notification key (the app needs it)
 //  POST {}                -> send any reminders that are due
 //  POST {"test": "<url>"} -> one test reminder to that subscribed phone
+//  POST {"joined": "<user id>"} -> tell the admin's phone(s) that someone asked to join
+//                            (fired by the database when a new member row appears;
+//                            only works for accounts created in the last 10 minutes)
 // =====================================================
 
 import webpush from "npm:web-push@3.6.7";
@@ -60,11 +63,11 @@ function localNow(timeZone: string): { date: string; minutes: number } {
   };
 }
 
-async function send(sub: { endpoint: string; p256dh: string; auth: string }) {
+async function send(sub: { endpoint: string; p256dh: string; auth: string }, message = MESSAGE) {
   try {
     await webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-      MESSAGE,
+      message,
     );
     return true;
   } catch (err) {
@@ -85,8 +88,26 @@ Deno.serve(async (req) => {
   if (req.method === "GET") return Response.json({ publicKey: keys.public_key }, { headers: CORS });
   webpush.setVapidDetails(SITE, keys.public_key, keys.private_key);
 
-  let body: { test?: string } = {};
+  let body: { test?: string; joined?: string } = {};
   try { body = await req.json(); } catch { /* the timer sends an empty body */ }
+
+  // Someone created an account: ping every phone of every admin
+  if (body.joined) {
+    const { data: who } = await supabase.from("members").select("name, status, requested_at")
+      .eq("user_id", body.joined).maybeSingle();
+    const fresh = who && Date.now() - new Date(who.requested_at).getTime() < 10 * 60 * 1000;
+    if (!who || who.status !== "pending" || !fresh) return Response.json({ ok: false }, { headers: CORS });
+    const { data: admins } = await supabase.from("members").select("user_id").eq("role", "admin").eq("status", "approved");
+    const ids = (admins ?? []).map((a) => a.user_id);
+    const { data: subs } = await supabase.from("push_subscriptions").select("*").in("user_id", ids);
+    const message = JSON.stringify({
+      title: "Someone wants to join",
+      body: `${who.name || "A new person"} created an account. Open Profile → Members to approve.`,
+    });
+    let sent = 0;
+    for (const sub of subs ?? []) if (await send(sub, message)) sent++;
+    return Response.json({ ok: true, sent }, { headers: CORS });
+  }
 
   // Test: send right now to one phone that has the reminder turned on
   if (body.test) {

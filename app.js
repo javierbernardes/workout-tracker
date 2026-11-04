@@ -3534,6 +3534,33 @@ document.getElementById("sign-out").addEventListener("click", function () {
   });
 });
 
+// Delete the account: a server-side program removes the account and, with it,
+// every log, the membership row and the reminder. Nothing is kept.
+document.getElementById("delete-account").addEventListener("click", function () {
+  askConfirm("Delete your account?",
+    "All your logs, your membership and your reminder will be deleted for good. This can't be undone.",
+    "Delete everything", true).then(async function (ok) {
+    if (!ok) return;
+    try {
+      const session = await validSession();
+      const response = await fetch(SUPABASE_URL + "/functions/v1/delete-account", {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + session.accessToken, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      const answer = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(answer.error || "Couldn't delete the account");
+      signOut();
+      localStorage.removeItem("pref-welcomed");
+      renderAccount();
+      showWelcome();
+      showToast("Your account and data are deleted");
+    } catch (error) {
+      showToast(error instanceof TypeError ? "Can't reach Supabase. Are you online?" : error.message);
+    }
+  });
+});
+
 // ---------- Members (admin only): approve or decline people ----------
 let membersToastShown = false;
 async function renderMembers() {

@@ -214,10 +214,14 @@ Just for the user for now, but designed so others can use it later (every entry 
      Email → "Allow new users to sign up" ON (keep "Confirm email" ON); Authentication → URL
      Configuration → Site URL = https://javierbernardes.github.io/workout-tracker/ and add it
      to Redirect URLs; optionally enable leaked-password protection (advisor warning).
-   - Not yet: "Delete my account" (needs a small Edge Function with the service role);
-     push notification to Javier when someone requests to join. Site URL fix was still
-     pending on 2026-10-22 (confirmation links landed on a 404 without /workout-tracker/).
-   - On hold (user's choice, 2026-11-04): minigames/challenges, delete account, join push.
+   - 2026-11-04: Edge Function `delete-account` (verify_jwt on; `supabase/functions/delete-account/`)
+     deletes the caller's auth user (cascade removes entries/members/subscriptions; refuses
+     admins); Profile has "Delete my account and all my data" (askConfirm → POST with bearer →
+     signOut + welcome). Trigger `on_member_created` (members insert → pg_net POST
+     {joined: user_id} to morning-reminder) → the function pushes "Someone wants to join" to all
+     admin subscriptions (only for pending rows younger than 10 min). morning-reminder is v3.
+     Site URL fix in the dashboard was still unconfirmed (links landed on a 404 on 2026-10-22).
+   - On hold (user's choice, 2026-11-04): minigames/challenges.
 
 10. 🟡 Daily-use tweaks (2026-11-04): Arms → Biceps / Triceps / Shoulders (`subgroups` in
     `EXERCISE_GROUPS`, step `pick-subgroup`, same orange wash); "Log it / Change" button in

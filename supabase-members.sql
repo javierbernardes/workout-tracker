@@ -114,3 +114,29 @@ create policy "Delete own subscriptions" on public.push_subscriptions for delete
 insert into public.members (user_id, email, name, status, role, approved_at)
 select id, email, 'Javier', 'approved', 'admin', now() from auth.users where email = 'jmbg.bego@gmail.com'
 on conflict (user_id) do update set status = 'approved', role = 'admin', approved_at = now();
+
+-- =====================================================
+--  Added 2026-11-04
+-- =====================================================
+
+-- When someone creates an account, the database pings the reminder program,
+-- which sends a push notification to the admin's phone(s): "Someone wants to join".
+create or replace function public.notify_admin_of_new_member()
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform net.http_post(
+    url := 'https://ugzvmzkigbbnigdcqbfo.supabase.co/functions/v1/morning-reminder',
+    headers := '{"Content-Type": "application/json"}'::jsonb,
+    body := jsonb_build_object('joined', new.user_id)
+  );
+  return new;
+end;
+$$;
+revoke execute on function public.notify_admin_of_new_member() from public, anon, authenticated;
+create trigger on_member_created
+  after insert on public.members for each row execute function public.notify_admin_of_new_member();
+
+-- The reminder program reads members (names, admins) to send that ping;
+-- the delete-account program (supabase/functions/delete-account/) deletes the auth user,
+-- and the "on delete cascade" rules remove the logs, membership and subscriptions.
+grant select on public.members to service_role;
