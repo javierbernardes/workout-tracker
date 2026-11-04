@@ -228,6 +228,13 @@ Just for the user for now, but designed so others can use it later (every entry 
     Week). Exercise lists expanded (~117, incl. the names Javier had typed: Smith flat bench,
     Bayesian cable curl, V-bar pushdown…; de-duplicated spellings match case-insensitively) and a
     search box on "Which muscles?" (`exerciseIndex()`, all words must match; offers Add "…").
+    `exerciseKey(name)` (lowercase, only letters/digits, trailing "s" dropped) is THE rule for
+    "same exercise" (Strength, Last time, search, custom names); 2026-11-04 the 4 split
+    spellings in the DB were renamed via SQL (Tbar row→T-bar row, Face pulls→Face pull,
+    Pull ups→Pull-up, Seated Shoulder press→Seated shoulder press). Strength view = list of every
+    exercise (`strengthGroups()`, search, best + last + sessions) → `#strength-detail` page
+    (stats, chart, every session with sets/volume/est. max). Only `.sheet-step .back` buttons
+    go "back a step"; other ‹ buttons have their own handlers.
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.

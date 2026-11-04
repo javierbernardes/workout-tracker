@@ -252,12 +252,23 @@
 
       <!-- ---------- STRENGTH: progress for one exercise ---------- -->
       <div id="view-strength" class="progress-view" hidden>
-        <h2>Strength</h2>
-        <p id="strength-empty" class="hint" hidden>No weights logged yet. They'll show up here after your first workout.</p>
-        <div id="strength-content">
-          <label class="field">Exercise
-            <select id="strength-exercise"></select>
-          </label>
+        <!-- The list of every exercise you've logged (tap one to open its history) -->
+        <div id="strength-home">
+          <h2>Strength</h2>
+          <p id="strength-empty" class="hint" hidden>No weights logged yet. They'll show up here after your first workout.</p>
+          <div id="strength-content">
+            <input type="search" id="strength-search" class="search-box" placeholder="Search your exercises" autocomplete="off" autocorrect="off" autocapitalize="off">
+            <ul id="strength-list" class="exercise-list"></ul>
+          </div>
+        </div>
+
+        <!-- One exercise: numbers, chart, and every session (slides in from the right) -->
+        <div id="strength-detail" class="page" hidden>
+          <div class="page-head">
+            <button type="button" class="back" id="strength-back" aria-label="Back to the list">‹</button>
+            <h2 id="strength-title"></h2>
+          </div>
+          <p class="hint small" id="strength-group"></p>
           <div class="stat-row" id="strength-stats"></div>
           <div class="chart-card main">
             <div class="chart-title">Estimated max (1 rep)</div>
@@ -265,9 +276,10 @@
               It lets you compare 8 × 60 with 5 × 70.</p>
             <div class="chart-box"><canvas id="chart-strength"></canvas></div>
           </div>
-          <h3>Sessions</h3>
+          <h3>Every session</h3>
           <ul id="strength-sessions" class="sub-list sessions"></ul>
         </div>
+      </div>
       </div>
 
       <!-- ---------- WEIGHT: body weight (as before) ---------- -->

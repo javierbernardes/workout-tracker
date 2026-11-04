@@ -811,21 +811,34 @@ const EXERCISE_GROUPS = [
       "Foam rolling"] }
 ];
 
+// Two spellings of the same exercise count as one: capitals, spaces, hyphens and a
+// trailing "s" are ignored ("Tbar row" = "T-bar row", "Pull ups" = "Pull-up").
+function exerciseKey(name) {
+  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+}
+
+// The muscle group an exercise belongs to ("" if it's one you typed yourself)
+function groupOfExercise(name) {
+  const key = exerciseKey(name);
+  const hit = exerciseIndex().find(function (x) { return exerciseKey(x.name) === key && x.listed; });
+  return hit ? hit.group : "";
+}
+
 // Every exercise with the group it belongs to (for the search and for colours)
 function exerciseIndex() {
   const list = [];
   const seen = {};
-  function add(name, groupName) {
-    const key = name.trim().toLowerCase();
+  function add(name, groupName, listed) {
+    const key = exerciseKey(name);
     if (!key || seen[key]) return;
     seen[key] = true;
-    list.push({ name: name, group: groupName });
+    list.push({ name: name, group: groupName, listed: !!listed });
   }
   EXERCISE_GROUPS.forEach(function (g) {
-    (g.exercises || []).forEach(function (n) { add(n, g.name); });
-    (g.subgroups || []).forEach(function (sub) { sub.exercises.forEach(function (n) { add(n, g.name); }); });
+    (g.exercises || []).forEach(function (n) { add(n, g.name, true); });
+    (g.subgroups || []).forEach(function (sub) { sub.exercises.forEach(function (n) { add(n, g.name, true); }); });
   });
-  loadEntries().filter(function (e) { return e.type === "weights"; }).forEach(function (e) { add(e.exercise, "Other"); });
+  loadEntries().filter(function (e) { return e.type === "weights"; }).forEach(function (e) { add(e.exercise, "Other", false); });
   return list;
 }
 
@@ -836,10 +849,7 @@ exerciseSearch.addEventListener("input", function () {
   const groupGrid = document.getElementById("group-grid");
   const results = document.getElementById("search-grid");
   if (!words.length) { groupGrid.hidden = false; results.hidden = true; return; }
-  const matches = exerciseIndex().filter(function (x) {
-    const name = x.name.toLowerCase();
-    return words.every(function (w) { return name.includes(w); });
-  }).slice(0, 24);
+  const matches = exerciseIndex().filter(function (x) { return nameMatches(x.name, words); }).slice(0, 24);
   results.innerHTML = "";
   matches.forEach(function (x) {
     results.appendChild(makeSquare(iconForGroup(x.group), x.name, function () { startExercise(x.name); }, x.group));
@@ -849,6 +859,13 @@ exerciseSearch.addEventListener("input", function () {
   groupGrid.hidden = true;
   results.hidden = false;
 });
+
+// Does every typed word appear in the name? Spaces and hyphens don't matter ("tbar" finds "T-bar row")
+function nameMatches(name, words) {
+  const plain = name.toLowerCase();
+  const squashed = plain.replace(/[^a-z0-9]/g, "");
+  return words.every(function (w) { return plain.includes(w) || squashed.includes(w.replace(/[^a-z0-9]/g, "")); });
+}
 
 function iconForGroup(groupName) {
   const g = EXERCISE_GROUPS.find(function (x) { return x.name === groupName; });
@@ -889,9 +906,9 @@ function renderExerciseSquares(group, colourName) {
   let names = group.exercises.slice();
   // Names you typed yourself before (not in any list) show up under Other
   if (group.name === "Other") {
-    const known = allKnownExercises();
+    const known = allKnownExercises().map(exerciseKey);
     loadEntries().filter(function (e) { return e.type === "weights"; }).forEach(function (e) {
-      if (!known.includes(e.exercise) && !names.includes(e.exercise)) names.push(e.exercise);
+      if (!known.includes(exerciseKey(e.exercise)) && !names.some(function (n) { return exerciseKey(n) === exerciseKey(e.exercise); })) names.push(e.exercise);
     });
   }
   names.forEach(function (name) {
@@ -955,7 +972,7 @@ document.querySelectorAll("#log [data-form]").forEach(function (button) {
 });
 
 // Every "← Back" button returns to the type buttons (or to History, when editing)
-document.querySelectorAll(".back").forEach(function (button) {
+document.querySelectorAll(".sheet-step .back").forEach(function (button) {
   button.addEventListener("click", function () {
     if (editing) stopEditing(true);
     else sheetBack();
@@ -1432,9 +1449,9 @@ function showLastTime(kind, entry, text, useIt) {
 
 function updateLastWeights() {
   const f = document.getElementById("form-weights").elements;
-  const name = f.exercise.value.trim().toLowerCase();
-  const last = name && lastEntry(function (e) {
-    return e.type === "weights" && e.exercise.trim().toLowerCase() === name;
+  const key = exerciseKey(f.exercise.value);
+  const last = key && lastEntry(function (e) {
+    return e.type === "weights" && exerciseKey(e.exercise) === key;
   });
   showLastTime("weights", last, last ? last.sets.map(function (s) { return s.reps + "×" + s.weight; }).join(", ") +
     " " + last.unit : "", function () {
@@ -2219,67 +2236,130 @@ function oneRepMax(reps, weight) {
 
 let strengthChart;
 
-document.getElementById("strength-exercise").addEventListener("change", function (event) {
-  setPref("strengthExercise", event.target.value);
-  renderStrength();
-});
+// Strength: first a list of every exercise you've logged, then (tap one) its
+// numbers, chart and every session. Spellings are merged with exerciseKey().
 
-function renderStrength() {
+// All your weight logs grouped by exercise: { key: { name, group, logs } }
+function strengthGroups() {
+  const groups = {};
+  loadEntries().filter(function (e) { return e.type === "weights" && e.sets && e.sets.length; }).forEach(function (e) {
+    const key = exerciseKey(e.exercise);
+    if (!key) return;
+    groups[key] = groups[key] || { key: key, names: {}, logs: [] };
+    groups[key].logs.push(e);
+    groups[key].names[e.exercise.trim()] = (groups[key].names[e.exercise.trim()] || 0) + 1;
+  });
+  Object.keys(groups).forEach(function (key) {
+    const g = groups[key];
+    // The display name: the list's spelling if there is one, else the one you used most
+    const listed = exerciseIndex().find(function (x) { return x.listed && exerciseKey(x.name) === key; });
+    g.name = listed ? listed.name : Object.keys(g.names).sort(function (a, b) { return g.names[b] - g.names[a]; })[0];
+    g.group = listed ? listed.group : "";
+    g.logs.sort(function (a, b) { return (a.date + entryTime(a)).localeCompare(b.date + entryTime(b)); });
+    g.sessions = strengthSessions(g.logs);
+    g.repsOnly = g.sessions.every(function (s) { return s.sets.every(function (x) { return !x.weight; }); });
+    g.best = g.sessions.reduce(function (a, b) { return b.best >= a.best ? b : a; });
+    g.last = g.sessions[g.sessions.length - 1];
+  });
+  return groups;
+}
+
+// One session per day: all the sets of that exercise that day, plus the best set
+function strengthSessions(logs) {
   const unit = getPref("weightUnit", "kg");
-  const logs = loadEntries().filter(function (e) { return e.type === "weights" && e.sets && e.sets.length; });
-  document.getElementById("strength-empty").hidden = logs.length > 0;
-  document.getElementById("strength-content").hidden = logs.length === 0;
-  if (logs.length === 0) return;
-
-  // The exercise list, most recently done first (names compared without caring about capitals)
-  const latest = {};
-  logs.forEach(function (e) {
-    const key = e.exercise.trim().toLowerCase();
-    const stamp = e.date + entryTime(e);
-    const name = e.exercise.trim().charAt(0).toUpperCase() + e.exercise.trim().slice(1);
-    if (!latest[key] || stamp > latest[key].stamp) latest[key] = { name: name, stamp: stamp };
-  });
-  const keys = Object.keys(latest).sort(function (a, b) { return latest[b].stamp.localeCompare(latest[a].stamp); });
-  const select = document.getElementById("strength-exercise");
-  select.innerHTML = "";
-  keys.forEach(function (key) {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = latest[key].name;
-    select.appendChild(option);
-  });
-  const chosen = keys.includes(getPref("strengthExercise", "")) ? getPref("strengthExercise", "") : keys[0];
-  select.value = chosen;
-
-  // One session per day: all the sets of that exercise that day
   const byDay = {};
-  logs.filter(function (e) { return e.exercise.trim().toLowerCase() === chosen; }).forEach(function (e) {
+  logs.forEach(function (e) {
     byDay[e.date] = byDay[e.date] || [];
     e.sets.forEach(function (s) {
       byDay[e.date].push({ reps: s.reps, weight: round1(inUnit(s.weight, e.unit, unit)) });
     });
   });
   const days = Object.keys(byDay).sort();
-  // Body-weight exercises (all weights 0): track the most reps instead
   const repsOnly = days.every(function (d) { return byDay[d].every(function (s) { return !s.weight; }); });
-
-  const sessions = days.map(function (d) {
+  return days.map(function (d) {
     const sets = byDay[d];
     const best = sets.reduce(function (top, s) {
       const score = repsOnly ? s.reps : oneRepMax(s.reps, s.weight);
       return score > top.score ? { score: score, set: s } : top;
     }, { score: 0, set: sets[0] });
-    return { date: d, sets: sets, best: round1(best.score), bestSet: best.set };
+    return { date: d, sets: sets, best: round1(best.score), bestSet: best.set,
+             volume: Math.round(sets.reduce(function (sum, s) { return sum + s.reps * s.weight; }, 0)) };
   });
+}
+
+function setsText(sets) {
+  return sets.map(function (s) { return s.reps + "×" + s.weight; }).join(", ");
+}
+
+function renderStrength() {
+  const unit = getPref("weightUnit", "kg");
+  const groups = strengthGroups();
+  const keys = Object.keys(groups);
+  document.getElementById("strength-empty").hidden = keys.length > 0;
+  document.getElementById("strength-content").hidden = keys.length === 0;
+  if (keys.length === 0) return;
+
+  // Most recently done first; the search box narrows the list
+  const words = document.getElementById("strength-search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  keys.sort(function (a, b) { return groups[b].last.date.localeCompare(groups[a].last.date); });
+  const list = document.getElementById("strength-list");
+  list.innerHTML = "";
+  keys.forEach(function (key) {
+    const g = groups[key];
+    if (words.length && !nameMatches(g.name, words)) return;
+    const li = document.createElement("li");
+    li.className = "exercise-row tappable";
+    const left = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = g.name;
+    const meta = document.createElement("div");
+    meta.className = "hint small";
+    meta.textContent = (g.group ? g.group + " · " : "") + g.sessions.length + (g.sessions.length === 1 ? " session" : " sessions") +
+      " · last " + formatDate(g.last.date);
+    const lastLine = document.createElement("div");
+    lastLine.className = "hint small";
+    lastLine.textContent = "Last: " + setsText(g.last.sets) + (g.repsOnly ? " reps" : " " + unit);
+    left.append(title, meta, lastLine);
+    const right = document.createElement("div");
+    right.className = "exercise-best";
+    const bestValue = document.createElement("strong");
+    bestValue.textContent = g.best.best + (g.repsOnly ? "" : " " + unit);
+    const bestLabel = document.createElement("div");
+    bestLabel.className = "hint small";
+    bestLabel.textContent = g.repsOnly ? "most reps" : "best est. max";
+    right.append(bestValue, bestLabel);
+    li.append(left, right, icon("chevronRight"));
+    li.addEventListener("click", function () { openStrengthDetail(key); });
+    list.appendChild(li);
+  });
+}
+
+document.getElementById("strength-search").addEventListener("input", renderStrength);
+
+const strengthHome = document.getElementById("strength-home");
+const strengthDetail = document.getElementById("strength-detail");
+
+function openStrengthDetail(key) {
+  const unit = getPref("weightUnit", "kg");
+  const g = strengthGroups()[key];
+  if (!g) return;
+  const sessions = g.sessions;
+  const repsOnly = g.repsOnly;
+  const unitLabel = repsOnly ? " reps" : " " + unit;
+
+  document.getElementById("strength-title").textContent = g.name;
+  document.getElementById("strength-group").textContent = (g.group || "Your own exercise") + " · " +
+    sessions.length + (sessions.length === 1 ? " session" : " sessions") + " · " +
+    g.logs.reduce(function (n, e) { return n + e.sets.length; }, 0) + " sets in total";
 
   // The number tiles
   const stats = document.getElementById("strength-stats");
   stats.innerHTML = "";
-  const top = sessions.reduce(function (a, b) { return b.best >= a.best ? b : a; });
+  const top = g.best;
   const last = sessions[sessions.length - 1];
   const before = sessions[sessions.length - 2];
-  const unitLabel = repsOnly ? " reps" : " " + unit;
-  stats.appendChild(statTile(repsOnly ? "Most reps" : "Best est. max", top.best + unitLabel, formatDate(top.date)));
+  stats.appendChild(statTile(repsOnly ? "Most reps" : "Best est. max", top.best + unitLabel,
+    formatDate(top.date) + " · " + top.bestSet.reps + "×" + top.bestSet.weight));
   if (before) {
     const change = round1(last.best - before.best);
     stats.appendChild(statTile("Last session", last.best + unitLabel,
@@ -2318,21 +2398,34 @@ function renderStrength() {
       }
     });
   }
+  box.closest(".chart-card").hidden = typeof Chart === "undefined";
 
-  // The sessions list, newest first
+  // Every session, newest first: the date, each set, and the session's best
   const list = document.getElementById("strength-sessions");
   list.innerHTML = "";
   sessions.slice().reverse().forEach(function (s) {
     const item = document.createElement("li");
     const day = document.createElement("strong");
     day.textContent = formatDate(s.date);
-    item.appendChild(day);
-    item.appendChild(document.createTextNode(" · " + s.sets.map(function (set) {
-      return set.reps + "×" + set.weight;
-    }).join(", ") + (repsOnly ? "" : " " + unit + " · est. max " + s.best + " " + unit)));
+    const line = document.createElement("div");
+    line.textContent = setsText(s.sets) + unitLabel;
+    const note = document.createElement("div");
+    note.className = "hint small";
+    note.textContent = s.sets.length + (s.sets.length === 1 ? " set" : " sets") +
+      (repsOnly ? "" : " · " + s.volume.toLocaleString("en-US") + " " + unit + " lifted · est. max " + s.best + " " + unit);
+    item.append(day, line, note);
     list.appendChild(item);
   });
+
+  strengthHome.hidden = true;
+  window.scrollTo(0, 0);
+  fluid.show(strengthDetail, { x: 40 }, { duration: 0.3 });
 }
+
+document.getElementById("strength-back").addEventListener("click", function () {
+  strengthDetail.hidden = true;
+  fluid.show(strengthHome, { x: -40 }, { duration: 0.3 });
+});
 
 
 // ---------- Week: the weekly summary ----------

@@ -1368,3 +1368,22 @@ body.sheet-open { overflow: hidden; }
   background-position: 0.75rem center;
 }
 .search-box::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+/* ---------- Strength: the list of exercises ---------- */
+.exercise-list { list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
+.exercise-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3);
+  margin-bottom: var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  cursor: pointer;
+}
+.exercise-row > div:first-child { flex: 1 1 auto; min-width: 0; }
+.exercise-best { flex: 0 0 auto; text-align: right; }
+.exercise-best strong { font-size: var(--fs-lg); letter-spacing: var(--ls-lg); font-variant-numeric: tabular-nums; }
+.exercise-row .icon-wrap { color: var(--muted); flex: 0 0 auto; }
+.sessions li div:not(.hint) { color: var(--text); margin-top: 2px; }
