@@ -215,7 +215,14 @@ Just for the user for now, but designed so others can use it later (every entry 
      Configuration → Site URL = https://javierbernardes.github.io/workout-tracker/ and add it
      to Redirect URLs; optionally enable leaked-password protection (advisor warning).
    - Not yet: "Delete my account" (needs a small Edge Function with the service role);
-     push notification to Javier when someone requests to join.
+     push notification to Javier when someone requests to join. Site URL fix was still
+     pending on 2026-10-22 (confirmation links landed on a 404 without /workout-tracker/).
+   - On hold (user's choice, 2026-11-04): minigames/challenges, delete account, join push.
+
+10. 🟡 Daily-use tweaks (2026-11-04): Arms → Biceps / Triceps / Shoulders (`subgroups` in
+    `EXERCISE_GROUPS`, step `pick-subgroup`, same orange wash); "Log it / Change" button in
+    the Today box opens `form-wake` in the sheet (works outside editing: adds `wake-<date>`);
+    a sticky timer bar (`.flow-timer`, class `.workout-timer`) at the top of the flow screens.
 
 GitHub: https://github.com/javierbernardes/workout-tracker (remote `origin`, branch `main`).
 Repo is Public (needed for free GitHub Pages): never commit passwords or secret keys.

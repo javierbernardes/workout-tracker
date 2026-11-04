@@ -138,9 +138,7 @@
           <div class="hint small" id="today-split"></div>
           <div class="today-wake">
             <span data-icon="sun"></span> <span id="today-wake-text"></span>
-            <label class="link-button">change
-              <input type="time" id="wake-time" class="hidden-input">
-            </label>
+            <button type="button" id="wake-button" class="link-button" data-form="form-wake">Log it</button>
           </div>
         </div>
 
@@ -183,6 +181,10 @@
       <!-- ============ THE FLOW SCREEN: the exercise-picking steps and forms, shown as full
            screens during a workout (the same steps open in the bottom sheet elsewhere) ============ -->
       <div id="flow-page" class="page" hidden>
+        <!-- The running workout's timer, always in view while you pick and log -->
+        <div class="flow-timer material">
+          <span data-icon="clock"></span> <span class="workout-timer">0:00:00</span>
+        </div>
         <div class="flow-body"></div>
       </div>
       </div>
@@ -457,6 +459,13 @@
         <button type="button" class="back" aria-label="Back">‹</button>
         <h2>Which muscles?</h2>
         <div class="type-grid squares" id="group-grid"></div>
+      </div>
+
+      <!-- ---------- Arms: Biceps / Triceps / Shoulders (squares, filled in by app.js) ---------- -->
+      <div id="pick-subgroup" class="log-form sheet-step" hidden>
+        <button type="button" class="back" aria-label="Back">‹</button>
+        <h2 id="pick-subgroup-title">Arms</h2>
+        <div class="type-grid squares" id="subgroup-grid"></div>
       </div>
 
       <!-- ---------- The exercises of that group (squares, filled in by app.js) ---------- -->

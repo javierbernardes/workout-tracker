@@ -783,8 +783,14 @@ const EXERCISE_GROUPS = [
       "Incline dumbbell press", "Chest fly", "Cable crossover", "Push-up", "Dips"] },
   { name: "Back", icon: "back", exercises: ["Deadlift", "Pull-up", "Lat pulldown", "Barbell row",
       "Dumbbell row", "Seated row", "T-bar row", "Face pull"] },
-  { name: "Arms", icon: "arms", exercises: ["Bicep curl", "Hammer curl", "Preacher curl", "Tricep pushdown",
-      "Skull crusher", "Overhead tricep extension", "Shoulder press", "Lateral raise", "Rear delt fly"] },
+  { name: "Arms", icon: "arms", subgroups: [
+      { name: "Biceps", icon: "arms", exercises: ["Bicep curl", "Hammer curl", "Preacher curl", "Incline curl",
+          "Cable curl", "Concentration curl", "Chin-up"] },
+      { name: "Triceps", icon: "arms", exercises: ["Tricep pushdown", "Skull crusher", "Overhead tricep extension",
+          "Close-grip bench press", "Tricep kickback", "Rope pushdown", "Dips"] },
+      { name: "Shoulders", icon: "arms", exercises: ["Shoulder press", "Lateral raise", "Front raise",
+          "Rear delt fly", "Face pull", "Arnold press", "Upright row", "Shrug"] }
+    ] },
   { name: "Legs", icon: "legs", exercises: ["Squat", "Front squat", "Leg press", "Romanian deadlift", "Lunge",
       "Bulgarian split squat", "Hip thrust", "Leg extension", "Leg curl", "Calf raise"] },
   { name: "Abs", icon: "abs", exercises: ["Plank", "Crunch", "Cable crunch", "Hanging leg raise",
@@ -799,26 +805,39 @@ function renderGroupSquares() {
   grid.innerHTML = "";
   EXERCISE_GROUPS.forEach(function (group) {
     grid.appendChild(makeSquare(group.icon, group.name, function () {
-      renderExerciseSquares(group);
+      if (group.subgroups) { renderSubgroupSquares(group); goStep("pick-subgroup"); }
+      else { renderExerciseSquares(group); goStep("pick-exercise"); }
+    }, group.name));
+  });
+}
+
+// Arms is split in three; each part lists its own exercises (same colour as Arms)
+function renderSubgroupSquares(group) {
+  document.getElementById("pick-subgroup-title").textContent = group.name;
+  const grid = document.getElementById("subgroup-grid");
+  grid.innerHTML = "";
+  group.subgroups.forEach(function (sub) {
+    grid.appendChild(makeSquare(sub.icon, sub.name, function () {
+      renderExerciseSquares(sub, group.name);
       goStep("pick-exercise");
     }, group.name));
   });
 }
 
-function renderExerciseSquares(group) {
+function renderExerciseSquares(group, colourName) {
   document.getElementById("pick-exercise-title").textContent = group.name;
   const grid = document.getElementById("exercise-grid");
   grid.innerHTML = "";
   let names = group.exercises.slice();
   // Names you typed yourself before (not in any list) show up under Other
   if (group.name === "Other") {
-    const known = EXERCISE_GROUPS.reduce(function (all, g) { return all.concat(g.exercises); }, []);
+    const known = allKnownExercises();
     loadEntries().filter(function (e) { return e.type === "weights"; }).forEach(function (e) {
       if (!known.includes(e.exercise) && !names.includes(e.exercise)) names.push(e.exercise);
     });
   }
   names.forEach(function (name) {
-    grid.appendChild(makeSquare(group.icon, name, function () { startExercise(name); }, group.name));
+    grid.appendChild(makeSquare(group.icon, name, function () { startExercise(name); }, colourName || group.name));
   });
   grid.appendChild(makeSquare("pencil", "Something else…", function () { startExercise(""); }));
 }
@@ -1188,8 +1207,13 @@ document.getElementById("discard-workout").addEventListener("click", function ()
 //  Common names, plus any you've typed before.
 // =====================================================
 
-// Every exercise from the six groups, for the suggestions list when you type a name
-const COMMON_EXERCISES = EXERCISE_GROUPS.reduce(function (all, g) { return all.concat(g.exercises); }, []);
+// Every exercise from the six groups (Arms counts its three parts), for the suggestions list
+function allKnownExercises() {
+  return EXERCISE_GROUPS.reduce(function (all, g) {
+    return all.concat(g.exercises || [], (g.subgroups || []).reduce(function (s, sub) { return s.concat(sub.exercises); }, []));
+  }, []);
+}
+const COMMON_EXERCISES = allKnownExercises();
 
 const COMMON_SPORTS = [
   "Padel", "Golf", "Soccer", "Tennis", "Basketball", "Volleyball", "Swimming", "Cycling"
@@ -1502,7 +1526,14 @@ document.getElementById("form-bodyweight").addEventListener("submit", function (
 document.getElementById("form-wake").addEventListener("submit", function (event) {
   event.preventDefault();
   const f = event.target.elements;
-  if (!editing) return;
+  if (!editing) {
+    // Logging it later in the day (or fixing today's): one wake-up per day, by its id
+    addEntry({ id: "wake-" + f.date.value, type: "wake", date: f.date.value, time: f.time.value });
+    showToast("Woke up at " + formatTime(f.time.value) + " ✓");
+    closeForms();
+    renderToday();
+    return;
+  }
   // The id holds the date ("wake-2026-10-20"), so a new date means a new entry
   if (f.date.value !== editing.date) {
     deleteEntry(editing.id);
@@ -2573,7 +2604,7 @@ function renderToday() {
   document.getElementById("today-wake-text").textContent = wake
     ? "Woke up at " + formatTime(wake.time)
     : "Wake-up not logged (assuming 7:00 AM)";
-  document.getElementById("wake-time").value = wake ? wake.time : "";
+  document.getElementById("wake-button").textContent = wake ? "Change" : "Log it";
 
   const day = dayCalories(t, nowMinutes());
   const value = document.getElementById("today-kcal");
@@ -2591,10 +2622,6 @@ function renderToday() {
 }
 setInterval(renderToday, 60000);   // keep it current, once a minute
 
-// Change today's wake-up time from the Today box
-document.getElementById("wake-time").addEventListener("change", function (event) {
-  if (event.target.value) logWake(event.target.value);
-});
 
 
 // =====================================================
